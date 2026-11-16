@@ -1,0 +1,17 @@
+{
+    "name": "FE.Presentation",
+    "rootNamespace": "",
+    "references": [
+        "GUID:378276ce7c7b61b46aadf5bbe0a960d7",
+        "GUID:2bc962c633adf3e4e84691baab0f660f"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
