@@ -1,7 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using Codice.CM.Common;
 using FE.Core;
 using UnityEngine;
 
@@ -41,7 +38,7 @@ namespace FE.Battle
             Vector3 localPos = worldPos - Origin;
 
             int x = Mathf.FloorToInt((localPos.x) / CellSize);
-            int y = Mathf.FloorToInt((localPos.y) / CellSize);
+            int y = Mathf.FloorToInt((localPos.z) / CellSize);
 
             return new GridCoord(x, y);
         }

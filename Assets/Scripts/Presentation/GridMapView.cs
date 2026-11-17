@@ -1,11 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
-using Codice.CM.Common;
 using FE.Battle;
 using FE.Core;
-using PlasticPipe.PlasticProtocol.Messages;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace FE.Presentation
 {
@@ -14,13 +9,20 @@ namespace FE.Presentation
     /// </summary>
     public class GridMapView : MonoBehaviour
     {
-        [SerializeField] private GameObject tilePrefab;
+        [SerializeField] private GridTileView tilePrefab;
 
-        private readonly List<GameObject> tileObjects = new List<GameObject>();
+        private GridTileView[,] tileObjects;
+
+        private bool hasHoveredGrid;
+        private bool hasSelectedGrid;
+        private GridCoord curHoveredGrid;
+        private GridCoord curSelectedGrid;
 
         public void CreateTiles(BattleMap map, GridGeometry gg)
         {
             ClearTiles();
+
+            tileObjects = new GridTileView[map.Width, map.Height];
 
             for (var i = 0; i < map.Width; i++)
             {
@@ -28,24 +30,101 @@ namespace FE.Presentation
                 {
                     GridCoord grid = new GridCoord(i, j);
                     var go = Instantiate(tilePrefab, transform);
-                    go.name = $"{i}x{j}";
+                    go.name = $"{i}_{j}";
                     go.transform.position = gg.GetCellCenter(grid);
-                    tileObjects.Add(go);
+                    tileObjects[i,j] = go;
                 }
             }
         }
 
         private void ClearTiles()
         {
-            foreach(var tile in tileObjects)
+            if (tileObjects != null)
             {
-                if (tile != null)
+                foreach (var tile in tileObjects)
                 {
-                    Destroy(tile);
+                    if (tile != null)
+                    {
+                        Destroy(tile);
+                    }
                 }
             }
 
-            tileObjects.Clear();
+            tileObjects = null;
+            hasHoveredGrid = false;
+            hasSelectedGrid = false;
+        }
+
+        public void SetHovered(GridCoord grid)
+        {
+            if (curHoveredGrid == grid && hasHoveredGrid) return;
+
+            if (hasHoveredGrid && TryGetTile(curHoveredGrid, out var oldTile))
+            {
+                oldTile.SetHovered(false);
+            }
+
+            hasHoveredGrid = false;
+
+            if (!TryGetTile(grid, out GridTileView tileView))
+            {
+                return;
+            }
+
+            hasHoveredGrid = true;
+            curHoveredGrid = grid;
+            tileView.SetHovered(true);
+        }
+
+        public void ClearHovered()
+        {
+            if (!hasHoveredGrid) return;
+
+            if (TryGetTile(curHoveredGrid, out var tile))
+            {
+                tile.SetHovered(false);
+            }
+
+            hasHoveredGrid = false;
+        }
+
+        public void SetSelected(GridCoord grid)
+        {
+            if (curSelectedGrid == grid && hasSelectedGrid) return;
+
+            if (!TryGetTile(grid, out GridTileView tileView))
+            {
+                return;
+            }
+
+            if (hasSelectedGrid && TryGetTile(curSelectedGrid, out var oldTile))
+            {
+                oldTile.SetSelected(false);
+            }
+
+            hasSelectedGrid = true;
+            curSelectedGrid = grid;
+            tileView.SetSelected(true);
+        }
+
+        private bool TryGetTile(GridCoord grid, out GridTileView tileView)
+        {
+            tileView = null;
+
+            if (tileObjects == null)
+            {
+                return false;
+            }
+
+            var width = tileObjects.GetLength(0);
+            var height = tileObjects.GetLength(1);
+            if (grid.x >= width || grid.y >= height || grid.x < 0 || grid.y < 0)
+            {
+                return false;
+            }
+
+            tileView = tileObjects[grid.x, grid.y];
+            return tileView != null;
         }
     }
 }

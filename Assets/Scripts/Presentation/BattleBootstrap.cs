@@ -12,14 +12,16 @@ namespace FE.Presentation
     /// </summary>
     public class BattleBootstrap : MonoBehaviour
     {
-        [SerializeField] BattleMapConfig bmConfig;
+        [SerializeField] private BattleMapConfig bmConfig;
         [SerializeField] private GridMapView gridMap;
         [SerializeField, Min(0.1f)] private float cellSize = 1f;
+        [SerializeField] private GridPointerController gridPointerController;
         public void Start()
         {
             BattleMap map = bmConfig.CreateMap();
             GridGeometry gg = new GridGeometry(gridMap.transform.position, cellSize);
             gridMap.CreateTiles(map, gg);
+            gridPointerController.Init(gridMap, gg, map);
         }
     }
 }
