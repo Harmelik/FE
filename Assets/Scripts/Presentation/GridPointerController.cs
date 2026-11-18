@@ -18,6 +18,9 @@ namespace FE.Presentation
         private BattleMap bmMap;
         public event Action<GridCoord> TileSelected;
 
+        private GridCoord? curHoverGrid;
+        public event Action<GridCoord?> HoverGridChanged; 
+
         private void Update()
         {
             if (!isInit) return;
@@ -29,18 +32,25 @@ namespace FE.Presentation
                 if (!bmMap.IsInside(curGrid))
                 {
                     gridMapView.ClearHovered();
+                    HoverGridChanged?.Invoke(null);
+                    curHoverGrid = null;
                     return;
                 }
                 gridMapView.SetHovered(curGrid);
+                if (curGrid != curHoverGrid)
+                {
+                    HoverGridChanged?.Invoke(curGrid);
+                    curHoverGrid = curGrid;
+                }
                 if(Input.GetMouseButtonDown(0))
                 {
-                    gridMapView.SetSelected(curGrid);
                     TileSelected?.Invoke(curGrid);
                 }
             }
             else
             {
                 gridMapView.ClearHovered();
+                HoverGridChanged?.Invoke(null);
             }
         }
 

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FE.Battle;
 using FE.Core;
 using UnityEngine;
@@ -17,6 +18,7 @@ namespace FE.Presentation
         private bool hasSelectedGrid;
         private GridCoord curHoveredGrid;
         private GridCoord curSelectedGrid;
+        private Dictionary<GridCoord, HashSet<UnitId>> inMovementGrids = new();
 
         public void CreateTiles(BattleMap map, GridGeometry gg)
         {
@@ -105,6 +107,67 @@ namespace FE.Presentation
             hasSelectedGrid = true;
             curSelectedGrid = grid;
             tileView.SetSelected(true);
+        }
+
+        public void ClearSelected()
+        {
+            if (!hasSelectedGrid)
+            {
+                return;
+            }
+
+            if (TryGetTile(curSelectedGrid, out GridTileView tile))
+            {
+                tile.SetSelected(false);
+            }
+
+            hasSelectedGrid = false;
+        }
+
+        public void SetInMovement(MovementRange range, UnitId id)
+        {
+            foreach (var grid in range.Destinations)
+            {
+                if (!inMovementGrids.TryGetValue(grid, out var ids))
+                {
+                    if (ids == null) ids = new HashSet<UnitId>();
+                    ids.Add(id);
+                    inMovementGrids.Add(grid, ids);
+                }
+                else
+                { 
+                    ids.Add(id);
+                }
+            }
+
+            RefreshMovement();
+        }
+
+        public void SetOffMovement(UnitId id)
+        {
+            if (inMovementGrids == null) return;
+            foreach (var grid in inMovementGrids)
+            {
+                if (grid.Value.Contains(id))
+                {
+                    grid.Value.Remove(id);
+                }
+            }
+            //if()inMovementGrids = null;
+            RefreshMovement();
+        }
+
+        private void RefreshMovement()
+        {
+            foreach (var grid in inMovementGrids)
+            {
+                if (!TryGetTile(grid.Key, out GridTileView tileView))
+                {
+                    continue;
+                }
+
+                tileView.SetMovement(grid.Value.Count > 0);
+            }
         }
 
         private bool TryGetTile(GridCoord grid, out GridTileView tileView)

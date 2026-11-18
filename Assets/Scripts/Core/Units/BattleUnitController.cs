@@ -14,36 +14,37 @@ namespace FE.Core
     /// </summary>
     public class BattleUnitController
     {
-        private List<BattleUnit> AllUnits = new List<BattleUnit>();
-        private Dictionary<UnitId, BattleUnit> AllUnitsDictionaryById = new Dictionary<UnitId, BattleUnit>();
-        private Dictionary<GridCoord, BattleUnit> AllUnitsDictionaryByGrid = new Dictionary<GridCoord, BattleUnit>();
+        private readonly List<BattleUnit> _allUnitsList = new List<BattleUnit>();
+        private readonly Dictionary<UnitId, BattleUnit> _allUnitsDictionaryById = new Dictionary<UnitId, BattleUnit>();
+        private readonly Dictionary<GridCoord, BattleUnit> _allUnitsDictionaryByGrid = new Dictionary<GridCoord, BattleUnit>();
+        public IReadOnlyList<BattleUnit> AllUnits => _allUnitsList;
 
         public BattleUnit AddUnit(BattleUnit unit, BattleMap map)
         {
             if (unit == null || unit.IsDead) return null;
-            if (AllUnitsDictionaryById.ContainsKey(unit.Id)) return null;
+            if (_allUnitsDictionaryById.ContainsKey(unit.Id)) return null;
             if (!map.IsInside(unit.CurGrid)) return null;
             if (GetUnitByGrid(unit.CurGrid) != null)
             {
                 return null;
             }
 
-            AllUnits.Add(unit);
-            AllUnitsDictionaryByGrid.Add(unit.CurGrid, unit);
-            AllUnitsDictionaryById.Add(unit.Id, unit);
+            _allUnitsList.Add(unit);
+            _allUnitsDictionaryByGrid.Add(unit.CurGrid, unit);
+            _allUnitsDictionaryById.Add(unit.Id, unit);
             return unit;
         }
 
         private void Clear()
         {
-            AllUnitsDictionaryById.Clear();
-            AllUnits.Clear();
-            AllUnitsDictionaryByGrid.Clear();
+            _allUnitsDictionaryById.Clear();
+            _allUnitsList.Clear();
+            _allUnitsDictionaryByGrid.Clear();
         }
 
         public BattleUnit GetUnitById(UnitId id)
         {
-            if (!AllUnitsDictionaryById.TryGetValue(id, out var battleUnit))
+            if (!_allUnitsDictionaryById.TryGetValue(id, out var battleUnit))
             {
                 return null;
             }
@@ -55,14 +56,14 @@ namespace FE.Core
 
         public BattleUnit GetUnitByGrid(GridCoord grid)
         {
-            if (!AllUnitsDictionaryByGrid.TryGetValue(grid, out BattleUnit battleUnit))
+            if (!_allUnitsDictionaryByGrid.TryGetValue(grid, out BattleUnit battleUnit))
             {
                 return null;
             }
 
             if (battleUnit.IsDead)
             {
-                AllUnitsDictionaryByGrid.Remove(grid);
+                _allUnitsDictionaryByGrid.Remove(grid);
                 return null;
             }
 
@@ -79,7 +80,7 @@ namespace FE.Core
             GridCoord destination,
             BattleMap map)
         {
-            if (!AllUnitsDictionaryById.TryGetValue(id, out BattleUnit unit))
+            if (!_allUnitsDictionaryById.TryGetValue(id, out BattleUnit unit))
             {
                 return null;
             }
@@ -91,16 +92,16 @@ namespace FE.Core
         {
             if (unit == null || unit.IsDead) return null;
             if (!map.IsInside(destination)) return null;
-            if (!AllUnitsDictionaryById.ContainsKey(unit.Id)) return null;
-            if (AllUnitsDictionaryByGrid.ContainsKey(destination)) return null;
-            if (AllUnitsDictionaryById[unit.Id] != unit) return null;
+            if (!_allUnitsDictionaryById.ContainsKey(unit.Id)) return null;
+            if (_allUnitsDictionaryByGrid.ContainsKey(destination)) return null;
+            if (_allUnitsDictionaryById[unit.Id] != unit) return null;
 
             var oldPos = unit.CurGrid;
             if (oldPos == destination) return destination;
 
-            AllUnitsDictionaryByGrid.Remove(oldPos);
+            _allUnitsDictionaryByGrid.Remove(oldPos);
             unit.MoveTo(destination);
-            AllUnitsDictionaryByGrid.Add(destination, unit);
+            _allUnitsDictionaryByGrid.Add(destination, unit);
             return destination;
         }
 
@@ -111,19 +112,19 @@ namespace FE.Core
                 return;
             }
 
-            if (!AllUnitsDictionaryById.TryGetValue(unit.Id, out BattleUnit registeredUnit)
+            if (!_allUnitsDictionaryById.TryGetValue(unit.Id, out BattleUnit registeredUnit)
                 || !ReferenceEquals(registeredUnit, unit))
             {
                 return;
             }
 
-            if (!AllUnitsDictionaryByGrid.TryGetValue(unit.CurGrid, out BattleUnit occupant) 
+            if (!_allUnitsDictionaryByGrid.TryGetValue(unit.CurGrid, out BattleUnit occupant) 
                 || !ReferenceEquals(occupant, unit))
             {
                 return;
             }
 
-            AllUnitsDictionaryByGrid.Remove(unit.CurGrid);
+            _allUnitsDictionaryByGrid.Remove(unit.CurGrid);
         }
     }
 }

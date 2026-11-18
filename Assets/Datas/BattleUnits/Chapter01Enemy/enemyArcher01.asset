@@ -10,8 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 47eb34cfa863add40b9b5413ba1493f9, type: 3}
-  m_Name: sword
+  m_Name: enemyArcher01
   m_EditorClassIdentifier: 
+  displayName: 
   maxHP: 25
   pAtk: 10
   phyDef: 3

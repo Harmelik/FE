@@ -122,3 +122,4 @@ MonoBehaviour:
   normalColor: {r: 0.21960786, g: 0.21960786, b: 0.21960786, a: 1}
   hoveredColor: {r: 1, g: 1, b: 1, a: 1}
   selectedColor: {r: 1, g: 0, b: 0, a: 1}
+  movementColor: {r: 0, g: 0.7196212, b: 1, a: 0}

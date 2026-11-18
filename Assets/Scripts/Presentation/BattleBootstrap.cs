@@ -12,16 +12,31 @@ namespace FE.Presentation
     /// </summary>
     public class BattleBootstrap : MonoBehaviour
     {
-        [SerializeField] private BattleMapConfig bmConfig;
+        [SerializeField] private BattleEncounterConfig encounterConfig;
         [SerializeField] private GridMapView gridMap;
         [SerializeField, Min(0.1f)] private float cellSize = 1f;
         [SerializeField] private GridPointerController gridPointerController;
+        [SerializeField] private BattleUnitsViewController battleUnitsViewController;
+        [SerializeField] private BattlePathView battlePathView;
+
+        private BattleSelectionController battleSelectionController;
         public void Start()
         {
-            BattleMap map = bmConfig.CreateMap();
+            BattleSetUpFactory factory = new BattleSetUpFactory();
+            battleSelectionController = new BattleSelectionController();
+            BattleContext context = factory.CreateContext(encounterConfig);
+
             GridGeometry gg = new GridGeometry(gridMap.transform.position, cellSize);
-            gridMap.CreateTiles(map, gg);
-            gridPointerController.Init(gridMap, gg, map);
+            gridMap.CreateTiles(context.Map, gg);
+            gridPointerController.Init(gridMap, gg, context.Map);
+            battlePathView.Init(gg);
+            battleSelectionController.Init(gridMap, context, gridPointerController, battlePathView);
+            battleUnitsViewController.Init(context, gg);
+        }
+
+        private void OnDestroy()
+        {
+            battleSelectionController?.Dispose();
         }
     }
 }

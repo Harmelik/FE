@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53917732431c74543818002450b09cf7, type: 3}
+  m_Name: Chapter01Encounter
+  m_EditorClassIdentifier: 
+  mapConfig: {fileID: 11400000, guid: b81c46bb2b77c5e44975286e9a2f2e4c, type: 2}
+  playerDeployments:
+  - _unitDefinition: {fileID: 11400000, guid: 270cc78d075c2cb4b80c1ed3c7296a46, type: 2}
+    _gridPosition: {x: 1, y: 2}
+  - _unitDefinition: {fileID: 11400000, guid: c4fc67dc5807d7743ae386715be88c1b, type: 2}
+    _gridPosition: {x: 1, y: 4}
+  - _unitDefinition: {fileID: 11400000, guid: 1fb06dc736d1f4d4f84f9ead603c6303, type: 2}
+    _gridPosition: {x: 2, y: 1}
+  - _unitDefinition: {fileID: 11400000, guid: a8ae41d30f58b364e868047703d5d231, type: 2}
+    _gridPosition: {x: 2, y: 3}
+  enemyDeployments:
+  - _unitDefinition: {fileID: 11400000, guid: 3292c9a0f8e8ae443bba97b19f184a7f, type: 2}
+    _gridPosition: {x: 8, y: 2}
+  - _unitDefinition: {fileID: 11400000, guid: 3292c9a0f8e8ae443bba97b19f184a7f, type: 2}
+    _gridPosition: {x: 8, y: 4}
+  - _unitDefinition: {fileID: 11400000, guid: 3292c9a0f8e8ae443bba97b19f184a7f, type: 2}
+    _gridPosition: {x: 7, y: 5}
+  - _unitDefinition: {fileID: 11400000, guid: b2def990612b2c84185599104629b59c, type: 2}
+    _gridPosition: {x: 9, y: 2}
+  - _unitDefinition: {fileID: 11400000, guid: b2def990612b2c84185599104629b59c, type: 2}
+    _gridPosition: {x: 9, y: 6}

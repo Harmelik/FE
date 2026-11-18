@@ -214,10 +214,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ee644be68512ad4aaee00a8a5b436f3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bmConfig: {fileID: 11400000, guid: b81c46bb2b77c5e44975286e9a2f2e4c, type: 2}
+  encounterConfig: {fileID: 11400000, guid: 6a4ecd01b516a224785f619c7e45292f, type: 2}
   gridMap: {fileID: 1240899356}
   cellSize: 1
   gridPointerController: {fileID: 131265011}
+  battleUnitsViewController: {fileID: 1531433004}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -449,6 +450,51 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tilePrefab: {fileID: 3420097713219164195, guid: 19bfc748367e80345b834ba18a8e699d, type: 3}
+--- !u!1 &1531433002
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1531433003}
+  - component: {fileID: 1531433004}
+  m_Layer: 0
+  m_Name: UnitRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1531433003
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1531433002}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.0653797, y: -17.662735, z: 11.298509}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1531433004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1531433002}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4df91e920573ecc4498ae89d4d289f68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  unitView: {fileID: 299357682170149323, guid: ed1698d20ec67c94c8e5735c52692cf7, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -458,3 +504,4 @@ SceneRoots:
   - {fileID: 1240899355}
   - {fileID: 653681729}
   - {fileID: 131265010}
+  - {fileID: 1531433003}

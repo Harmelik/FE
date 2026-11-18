@@ -12,9 +12,11 @@ namespace FE.Presentation
         [SerializeField] private Color normalColor;
         [SerializeField] private Color hoveredColor;
         [SerializeField] private Color selectedColor;
+        [SerializeField] private Color movementColor;
 
         private bool isHovered;
         private bool isSelected;
+        private bool isInMovement;
 
         private void Awake()
         {
@@ -35,6 +37,13 @@ namespace FE.Presentation
             RefreshTileColor();
         }
 
+        public void SetMovement(bool isMovement)
+        {
+            isInMovement = isMovement;
+
+            RefreshTileColor();
+        }
+
         private void RefreshTileColor()
         {
             if (isSelected)
@@ -44,6 +53,10 @@ namespace FE.Presentation
             else if (isHovered)
             {
                 meshRenderer.material.color = hoveredColor;
+            }
+            else if (isInMovement)
+            {
+                meshRenderer.material.color = movementColor;
             }
             else
             {
