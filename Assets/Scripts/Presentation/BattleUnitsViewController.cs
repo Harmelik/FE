@@ -25,6 +25,15 @@ namespace FE.Presentation
                 unitViews.Add(unit.Id, newUnitView);
             }
         }
+
+        public bool TryGetUnitViewById(UnitId id, out BattleUnitView unitView)
+        {
+            unitView = null;
+
+            return unitViews != null &&
+                   unitViews.TryGetValue(id, out unitView) &&
+                   unitView != null;
+        }
     }
 }
 

@@ -18,6 +18,7 @@ namespace FE.Presentation
         [SerializeField] private GridPointerController gridPointerController;
         [SerializeField] private BattleUnitsViewController battleUnitsViewController;
         [SerializeField] private BattlePathView battlePathView;
+        [SerializeField] private BattleActionMenuView battleActionMenuView;
 
         private BattleSelectionController battleSelectionController;
         public void Start()
@@ -30,8 +31,10 @@ namespace FE.Presentation
             gridMap.CreateTiles(context.Map, gg);
             gridPointerController.Init(gridMap, gg, context.Map);
             battlePathView.Init(gg);
-            battleSelectionController.Init(gridMap, context, gridPointerController, battlePathView);
             battleUnitsViewController.Init(context, gg);
+
+            battleSelectionController.Init(gridMap, context, gridPointerController, 
+                battlePathView, battleUnitsViewController, battleActionMenuView);
         }
 
         private void OnDestroy()

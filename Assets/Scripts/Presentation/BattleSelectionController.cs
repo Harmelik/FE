@@ -1,7 +1,8 @@
+using FE.Core;
 using System;
 using System.Collections.Generic;
-using FE.Core;
 using UnityEngine;
+using static UnityEngine.UI.CanvasScaler;
 
 namespace FE.Presentation
 {
@@ -17,16 +18,24 @@ namespace FE.Presentation
         private GridPointerController pointer;
         private BattlePathView battlePath;
         private MovementRange curMovementRange;
+        private BattleUnitsViewController battleUnitsViewController;
+        private BattleActionMenuView actionMenuView;
+        private GridCoord? previewGrid;
+        private bool isMovePreview;
 
         public void Init(GridMapView mapView, BattleContext context, 
-            GridPointerController gridPointerController, BattlePathView battlePathView)
+            GridPointerController gridPointerController, BattlePathView battlePathView,
+            BattleUnitsViewController battleUnitsViewController, BattleActionMenuView actionMenuView)
         {
             if (mapView == null || context == null 
-            || gridPointerController == null || battlePathView == null) return;
+            || gridPointerController == null || battlePathView == null
+            || battleUnitsViewController == null || actionMenuView == null) return;
 
             gridMapView = mapView;
             this.context = context;
             battlePath = battlePathView;
+            this.battleUnitsViewController = battleUnitsViewController;
+            this.actionMenuView = actionMenuView;
 
             if (pointer != null)
             {
@@ -41,20 +50,82 @@ namespace FE.Presentation
 
         public void OnClickGrid(GridCoord grid)
         {
-            var unit = context.Units.GetUnitByGrid(grid);
-            if (unit == null)
+            if (isMovePreview) return;
+            if (curSelectPlayer == null)
             {
-                Debug.Log("点击空地");
-                gridMapView.SetSelected(grid);
-            } 
-            else if (unit.Fac == Faction.Enemy)
-            {
-                OnClickEnemies(unit);
-            } 
-            else if (unit.Fac == Faction.Player)
-            {
-                OnClickPlayer(unit);
+                var unit = context.Units.GetUnitByGrid(grid);
+                if (unit == null)
+                {
+                    Debug.Log("点击空地");
+                    gridMapView.SetSelected(grid);
+                }
+                else if (unit.Fac == Faction.Enemy)
+                {
+                    OnClickEnemies(unit);
+                }
+                else if (unit.Fac == Faction.Player)
+                {
+                    OnClickPlayer(unit);
+                }
             }
+            else
+            {
+                var unit = context.Units.GetUnitByGrid(grid);
+                if (unit != null)
+                {
+                    if (unit.Fac == Faction.Player)
+                    {
+                        OnClickPlayer(unit);
+                    }
+                    return;
+                }
+
+                if (!curMovementRange.CanStopAt(grid)) return;
+
+                if (battleUnitsViewController.TryGetUnitViewById(curSelectPlayer.Id, 
+                        out var curOpUnitView))
+                {
+                    previewGrid = grid;
+                    isMovePreview = true;
+
+                    curOpUnitView.MoveToPreviewPosition(grid);
+
+                    curMovementRange = null;
+                    gridMapView.SetOffMovement(curSelectPlayer.Id);
+                    gridMapView.ClearSelected();
+                    battlePath.HidePath();
+
+                    actionMenuView.Show(curSelectPlayer, false, null, () =>
+                    {
+                        var destination = context.Units.MoveUnit(curSelectPlayer, grid, context.Map);
+                        if (!destination.HasValue)
+                        {
+                            curOpUnitView.RefreshToDefaultPosition();
+                            ClearAllSelectionStatus(curSelectPlayer);
+                            return;
+                        }
+
+                        curSelectPlayer.MarkActed();
+                        curOpUnitView.RefreshToDefaultPosition();
+                        ClearAllSelectionStatus(curSelectPlayer);
+                    }, () =>
+                    {
+                        curOpUnitView.RefreshToDefaultPosition();
+                        ClearAllSelectionStatus(curSelectPlayer);
+                    });
+                }
+            }
+        }
+
+        private void ClearAllSelectionStatus(BattleUnit unit)
+        {
+            curSelectPlayer = null;
+            curMovementRange = null;
+            gridMapView.SetOffMovement(unit.Id);
+            gridMapView.ClearSelected();
+            battlePath.HidePath();
+            isMovePreview = false;
+            previewGrid = null;
         }
 
         public void OnClickPlayer(BattleUnit unit)
@@ -64,22 +135,13 @@ namespace FE.Presentation
             //点击正在操作中的弟子，取消该弟子的当前选择
             if (unit == curSelectPlayer)
             {
-                curSelectPlayer = null;
-                curMovementRange = null;
-                gridMapView.SetOffMovement(unit.Id);
-                gridMapView.ClearSelected();
-                battlePath.HidePath();
+                ClearAllSelectionStatus(unit);
             }
             else
             {
                 if(curSelectPlayer != null)
                 {
-                    gridMapView.SetOffMovement(curSelectPlayer.Id);
-                    gridMapView.ClearSelected();
-
-                    curSelectPlayer = null;
-                    curMovementRange = null;
-                    battlePath.HidePath();
+                    ClearAllSelectionStatus(curSelectPlayer);
                 }
                 if (MovementQuery.TryCalculate(unit, context.Map, context.Units, out var result))
                 { 

@@ -26,6 +26,7 @@ namespace FE.Presentation
                 this.HidePath();
                 return;
             }
+            enabled = true;
             lineRenderer.positionCount = path.Count;
             var pos = new Vector3[path.Count];
             for(var i = 0; i < path.Count; i++)
@@ -39,6 +40,7 @@ namespace FE.Presentation
         public void HidePath()
         {
             lineRenderer.positionCount = 0;
+            enabled = false;
         }
     }
 }

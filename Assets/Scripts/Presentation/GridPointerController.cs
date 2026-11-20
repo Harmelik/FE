@@ -2,6 +2,7 @@ using System;
 using FE.Battle;
 using FE.Core;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace FE.Presentation
 {
@@ -24,6 +25,13 @@ namespace FE.Presentation
         private void Update()
         {
             if (!isInit) return;
+
+            if (EventSystem.current != null &&
+                EventSystem.current.IsPointerOverGameObject())
+            {
+                gridMapView.ClearHovered();
+                return;
+            }
 
             Ray ray = battleCamera.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out var hitInfo, 100f, tileLayerMask))
