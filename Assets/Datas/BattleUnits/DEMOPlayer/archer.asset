@@ -20,6 +20,6 @@ MonoBehaviour:
   magicDef: 3
   hit: 80
   avoid: 0
-  movement: 3
-  minAttackRange: 1
-  maxAttackRange: 1
+  movement: 7
+  minAttackRange: 2
+  maxAttackRange: 3

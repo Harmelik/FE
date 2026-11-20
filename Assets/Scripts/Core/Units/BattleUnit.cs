@@ -46,15 +46,13 @@ namespace FE.Core
             return oldHP > finalDmg ? oldHP - finalDmg : oldHP;
         }
 
-        internal GridCoord MoveTo(GridCoord destination)
+        internal void MoveTo(GridCoord destination)
         {
-            if (IsDead) return destination;
-            GridCoord des = destination;
-            CurGrid = des;
-            return des;
+            if (IsDead) return;
+            CurGrid = destination;
         }
 
-        public void MarkActed()
+        internal void MarkActed()
         {
             if (HasActed || IsDead) return;
             HasActed = true;

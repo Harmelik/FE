@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using FE.Battle;
@@ -19,7 +17,7 @@ namespace FE.Presentation
         [SerializeField] private Material playerMaterial;
         [SerializeField] private Material enemyMaterial;
         [SerializeField] private float offsetY;
-        private Tweener previewTween;
+        private Sequence previewTween;
 
         public void Init(BattleUnit unit, GridGeometry gg)
         {
@@ -45,20 +43,60 @@ namespace FE.Presentation
         public void MoveToPreviewPosition(GridCoord grid)
         {
             previewTween?.Kill();
-            previewTween = DOTween.To(
-                () => transform.position,        // 当前值
-                value => transform.position = value, // 每帧写入新值
-                gg.GetCellCenter(grid) + Vector3.up * offsetY,                   // 目标值
-                0.5f                 // 持续时间
-            );
-            //transform.position = gg.GetCellCenter(grid) + Vector3.up * offsetY;
+
+            previewTween = DOTween.Sequence();
+
+            previewTween.Append(
+                DOTween.To(
+                    () => transform.position,
+                    value => transform.position = value,
+                    gg.GetCellCenter(grid) + Vector3.up * offsetY,
+                    0.2f));
+
+            previewTween.Play();
         }
 
+        public void MoveToPreviewPositionByPath(
+            IReadOnlyList<GridCoord> path)
+        {
+            previewTween?.Kill();
+            previewTween = null;
+
+            if (path == null || path.Count == 0)
+            {
+                return;
+            }
+
+            previewTween = DOTween.Sequence();
+
+            foreach (GridCoord grid in path)
+            {
+                previewTween.Append(
+                    DOTween.To(
+                        () => transform.position,
+                        value => transform.position = value,
+                        gg.GetCellCenter(grid) + Vector3.up * offsetY,
+                        0.06f));
+            }
+
+            previewTween.Play();
+        }
         public void RefreshToDefaultPosition()
         {
             previewTween?.Kill();
             previewTween = null;
             transform.position = gg.GetCellCenter(battleUnit.CurGrid) + Vector3.up * offsetY;
+        }
+
+        public void SetGrayed()
+        {
+            //TODO 行动完的角色置灰
+        }
+
+        private void OnDestroy()
+        {
+            previewTween?.Kill();
+            previewTween = null;
         }
     }
 }

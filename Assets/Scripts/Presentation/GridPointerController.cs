@@ -20,7 +20,9 @@ namespace FE.Presentation
         public event Action<GridCoord> TileSelected;
 
         private GridCoord? curHoverGrid;
-        public event Action<GridCoord?> HoverGridChanged; 
+        public event Action<GridCoord?> HoverGridChanged;
+
+        public bool lockInput;
 
         private void Update()
         {
@@ -29,7 +31,13 @@ namespace FE.Presentation
             if (EventSystem.current != null &&
                 EventSystem.current.IsPointerOverGameObject())
             {
-                gridMapView.ClearHovered();
+                UpdateHoveredGrid(null);
+                return;
+            }
+
+            if (lockInput)
+            {
+                UpdateHoveredGrid(null);
                 return;
             }
 
@@ -39,12 +47,12 @@ namespace FE.Presentation
                 var curGrid = geometry.WorldPosToGrid(hitInfo.point);
                 if (!bmMap.IsInside(curGrid))
                 {
-                    gridMapView.ClearHovered();
+                    UpdateHoveredGrid(null);
                     HoverGridChanged?.Invoke(null);
                     curHoverGrid = null;
                     return;
                 }
-                gridMapView.SetHovered(curGrid);
+                UpdateHoveredGrid(curGrid);
                 if (curGrid != curHoverGrid)
                 {
                     HoverGridChanged?.Invoke(curGrid);
@@ -60,6 +68,27 @@ namespace FE.Presentation
                 gridMapView.ClearHovered();
                 HoverGridChanged?.Invoke(null);
             }
+        }
+
+        private void UpdateHoveredGrid(GridCoord? grid)
+        {
+            if (curHoverGrid == grid)
+            {
+                return;
+            }
+
+            curHoverGrid = grid;
+
+            if (grid.HasValue)
+            {
+                gridMapView.SetHovered(grid.Value);
+            }
+            else
+            {
+                gridMapView.ClearHovered();
+            }
+
+            HoverGridChanged?.Invoke(grid);
         }
 
         public void Init(GridMapView map, GridGeometry geometry, BattleMap battleMap)

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using FE.Battle;
 using FE.Core;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace FE.Presentation
 {
@@ -19,6 +20,7 @@ namespace FE.Presentation
         private GridCoord curHoveredGrid;
         private GridCoord curSelectedGrid;
         private Dictionary<GridCoord, HashSet<UnitId>> inMovementGrids = new();
+        private Dictionary<GridCoord, HashSet<UnitId>> inAttackGrids = new();
 
         public void CreateTiles(BattleMap map, GridGeometry gg)
         {
@@ -126,6 +128,7 @@ namespace FE.Presentation
 
         public void SetInMovement(MovementRange range, UnitId id)
         {
+            RemoveMovementRangeSource(id);
             foreach (var grid in range.Destinations)
             {
                 if (!inMovementGrids.TryGetValue(grid, out var ids))
@@ -146,13 +149,7 @@ namespace FE.Presentation
         public void SetOffMovement(UnitId id)
         {
             if (inMovementGrids == null) return;
-            foreach (var grid in inMovementGrids)
-            {
-                if (grid.Value.Contains(id))
-                {
-                    grid.Value.Remove(id);
-                }
-            }
+            RemoveMovementRangeSource(id);
             //if()inMovementGrids = null;
             RefreshMovement();
         }
@@ -167,6 +164,70 @@ namespace FE.Presentation
                 }
 
                 tileView.SetMovement(grid.Value.Count > 0);
+            }
+        }
+
+        private void RemoveMovementRangeSource(UnitId unitId)
+        {
+            foreach (HashSet<UnitId> ids in inMovementGrids.Values)
+            {
+                ids.Remove(unitId);
+            }
+        }
+
+        public void SetInAttackRange(
+            IEnumerable<GridCoord> attackRange,
+            UnitId unitId)
+        {
+            if (attackRange == null)
+            {
+                return;
+            }
+
+            RemoveAttackRangeSource(unitId);
+
+            foreach (GridCoord grid in attackRange)
+            {
+                if (!inAttackGrids.TryGetValue(
+                        grid,
+                        out HashSet<UnitId> ids))
+                {
+                    ids = new HashSet<UnitId>();
+                    inAttackGrids.Add(grid, ids);
+                }
+
+                ids.Add(unitId);
+            }
+
+            RefreshAttackRange();
+        }
+
+        private void RemoveAttackRangeSource(UnitId unitId)
+        {
+            foreach (HashSet<UnitId> ids in inAttackGrids.Values)
+            {
+                ids.Remove(unitId);
+            }
+        }
+
+        public void SetOffAttackRange(UnitId unitId)
+        {
+            RemoveAttackRangeSource(unitId);
+            RefreshAttackRange();
+        }
+
+        private void RefreshAttackRange()
+        {
+            foreach (var grid in inAttackGrids)
+            {
+                if (!TryGetTile(grid.Key, out GridTileView tileView))
+                {
+                    continue;
+                }
+
+                tileView.SetAttack(grid.Value.Count > 0);
+                if(!inMovementGrids.ContainsKey(grid.Key)) continue;
+                tileView.SetMovement(inMovementGrids[grid.Key].Count > 0);
             }
         }
 

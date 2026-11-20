@@ -75,7 +75,7 @@ namespace FE.Core
             return GetUnitByGrid(grid) != null;
         }
 
-        public GridCoord? MoveUnitById(
+        internal GridCoord? MoveUnitById(
             UnitId id,
             GridCoord destination,
             BattleMap map)
@@ -88,7 +88,10 @@ namespace FE.Core
             return MoveUnit(unit, destination, map);
         }
 
-        public GridCoord? MoveUnit(BattleUnit unit, GridCoord destination, BattleMap map)
+        internal GridCoord? MoveUnit(
+            BattleUnit unit,
+            GridCoord destination,
+            BattleMap map)
         {
             if (unit == null || unit.IsDead) return null;
             if (!map.IsInside(destination)) return null;

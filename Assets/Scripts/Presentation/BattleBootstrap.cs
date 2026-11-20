@@ -19,6 +19,8 @@ namespace FE.Presentation
         [SerializeField] private BattleUnitsViewController battleUnitsViewController;
         [SerializeField] private BattlePathView battlePathView;
         [SerializeField] private BattleActionMenuView battleActionMenuView;
+        [SerializeField] private BattleForecastView battleForecastView;
+
 
         private BattleSelectionController battleSelectionController;
         public void Start()
@@ -26,6 +28,8 @@ namespace FE.Presentation
             BattleSetUpFactory factory = new BattleSetUpFactory();
             battleSelectionController = new BattleSelectionController();
             BattleContext context = factory.CreateContext(encounterConfig);
+            BattleCommandProcessor commandProcessor =
+                new BattleCommandProcessor(context);
 
             GridGeometry gg = new GridGeometry(gridMap.transform.position, cellSize);
             gridMap.CreateTiles(context.Map, gg);
@@ -34,7 +38,8 @@ namespace FE.Presentation
             battleUnitsViewController.Init(context, gg);
 
             battleSelectionController.Init(gridMap, context, gridPointerController, 
-                battlePathView, battleUnitsViewController, battleActionMenuView);
+                battlePathView, battleUnitsViewController, battleActionMenuView,
+                commandProcessor, battleForecastView);
         }
 
         private void OnDestroy()
