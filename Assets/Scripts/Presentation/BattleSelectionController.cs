@@ -5,6 +5,16 @@ using UnityEngine;
 
 namespace FE.Presentation
 {
+    public enum BattleStatus
+    {
+        Idle,
+        UnitSelected,
+        MovePreviewing,
+        ActionMenu,
+        BattleForecast,
+        ResolvingCombat
+    }
+
     /// <summary>
     /// 判断点击具体点击的是哪个物体
     /// </summary>
@@ -22,21 +32,24 @@ namespace FE.Presentation
         private BattleForecastView resultView;
         private BattleCommandProcessor commandProcessor;
         private GridCoord? previewGrid;
-        private bool isMovePreview;
         private int curSelectEnemyIndex;
-        private bool isBattleForecastOpen;
         private List<BattleUnit> curAttackTargets;
+        private BattleUnit curAttackTarget;
         private BattleUnitView curOpUnitView;
+        private BattleStatus battleStatus;
+        private BattleCombatPresentationController combatPresentationController;
 
         public void Init(GridMapView mapView, BattleContext context, 
             GridPointerController gridPointerController, BattlePathView battlePathView,
             BattleUnitsViewController battleUnitsViewController, BattleActionMenuView actionMenuView,
-            BattleCommandProcessor commandProcessor, BattleForecastView resultView)
+            BattleCommandProcessor commandProcessor, BattleForecastView resultView,
+            BattleCombatPresentationController combatPresentationController)
         {
             if (mapView == null || context == null 
             || gridPointerController == null || battlePathView == null
             || battleUnitsViewController == null || actionMenuView == null
-            || commandProcessor == null || resultView == null) return;
+            || commandProcessor == null || resultView == null
+            || combatPresentationController == null) return;
 
             gridMapView = mapView;
             this.context = context;
@@ -44,6 +57,7 @@ namespace FE.Presentation
             this.battleUnitsViewController = battleUnitsViewController;
             this.actionMenuView = actionMenuView;
             this.commandProcessor = commandProcessor;
+            this.combatPresentationController = combatPresentationController;
 
             if (pointer != null)
             {
@@ -55,21 +69,15 @@ namespace FE.Presentation
             pointer.TileSelected += OnClickGrid;
             pointer.HoverGridChanged += OnHoverChanged;
 
-            if (resultView != null)
-            {
-                resultView.ChangeToNextTarget -= OnEPressed;
-                resultView.ChangeToPreviousTarget -= OnQPressed;
-                resultView.EscapeAction -= OnEscapePressed;
-            }
             this.resultView = resultView;
-            resultView.ChangeToNextTarget += OnEPressed;
-            resultView.ChangeToPreviousTarget += OnQPressed;
-            resultView.EscapeAction += OnEscapePressed;
         }
 
         public void OnClickGrid(GridCoord grid)
         {
-            if (isMovePreview || isBattleForecastOpen) return;
+            if (!CanHandleGridInput())
+            {
+                return;
+            }
 
             if (curSelectPlayer == null)
             {
@@ -93,6 +101,7 @@ namespace FE.Presentation
             {
                 BattleUnit unitAtTile = context.Units.GetUnitByGrid(grid);
 
+                //点击的不是当前选中的人且是我方的人，切换选中的我方弟子
                 if (unitAtTile != null && unitAtTile != curSelectPlayer)
                 {
                     if (unitAtTile.Fac == Faction.Player)
@@ -111,7 +120,7 @@ namespace FE.Presentation
 
                 if (!battleUnitsViewController.TryGetUnitViewById(
                         curSelectPlayer.Id,
-                        out BattleUnitView curOpUnitView))
+                        out BattleUnitView unitView))
                 {
                     return;
                 }
@@ -123,59 +132,68 @@ namespace FE.Presentation
                     return;
                 }
 
-                previewGrid = grid;
-                isMovePreview = true;
-
+                GridCoord destination = grid;
                 BattleUnit selectedUnit = curSelectPlayer;
 
-                //TODO 等角色到位置之后再打开菜单and显示战斗范围
-                curOpUnitView.MoveToPreviewPositionByPath(path);
+                previewGrid = destination;
+                ChangeState(BattleStatus.MovePreviewing);
+                this.curOpUnitView = unitView;
+                curAttackTargets = null;
+                curAttackTarget = null;
                 curMovementRange = null;
                 gridMapView.SetOffMovement(selectedUnit.Id);
                 gridMapView.SetOffAttackRange(selectedUnit.Id);
                 gridMapView.ClearSelected();
                 battlePath.HidePath();
 
-                HashSet<GridCoord> exactAttackRange = 
-                    AttackRangeQuery.TryCalculateAttackRangesByGrid(
+                unitView.MoveToPreviewPositionByPath(
+                    path,
+                    () => OnMovePreviewCompleted(
                         selectedUnit,
-                        context.Map,
-                        previewGrid.Value);
-
-                bool canAttack = false;
-
-                List<BattleUnit> attackTargets = new List<BattleUnit>();
-                if (exactAttackRange != null)
-                {
-                    attackTargets = AttackTargetQuery.FindTargetsInRange(
-                            context,
-                            selectedUnit,
-                            exactAttackRange);
-
-                    canAttack = attackTargets.Count > 0;
-                }
-
-                if (canAttack)
-                {
-                    gridMapView.SetInAttackRange(exactAttackRange, curSelectPlayer.Id);
-                }
-
-                curSelectEnemyIndex = 0;
-                curAttackTargets = attackTargets;
-                this.curOpUnitView = curOpUnitView;
-                actionMenuView.Show(
-                    selectedUnit,
-                    canAttack,
-                    curAttackTargets.Count > 0 ? 
-                        () => CommitMoveAndAttack(curSelectPlayer,attackTargets) : null,
-                    () => CommitMoveAndWait(
-                        selectedUnit,
-                        curOpUnitView,
-                        grid),
-                    () => CancelMovePreview(
-                        selectedUnit,
-                        curOpUnitView));
+                        destination,
+                        unitView));
             }
+        }
+
+        private void OnMovePreviewCompleted(
+            BattleUnit selectedUnit,
+            GridCoord destination,
+            BattleUnitView unitView)
+        {
+            if (battleStatus != BattleStatus.MovePreviewing ||
+                !ReferenceEquals(curSelectPlayer, selectedUnit) ||
+                previewGrid != destination ||
+                !ReferenceEquals(curOpUnitView, unitView))
+            {
+                return;
+            }
+
+            HashSet<GridCoord> exactAttackRange =
+                AttackRangeQuery.TryCalculateAttackRangesByGrid(
+                    selectedUnit,
+                    context.Map,
+                    destination);
+
+            List<BattleUnit> attackTargets = new List<BattleUnit>();
+
+            if (exactAttackRange != null)
+            {
+                attackTargets = AttackTargetQuery.FindTargetsInRange(
+                    context,
+                    selectedUnit,
+                    exactAttackRange);
+            }
+
+            if (attackTargets.Count > 0)
+            {
+                gridMapView.SetInAttackRange(
+                    exactAttackRange,
+                    selectedUnit.Id);
+            }
+
+            curSelectEnemyIndex = 0;
+            curAttackTargets = attackTargets;
+            ShowMoveActionMenu();
         }
 
         private void CommitMoveAndWait(
@@ -200,8 +218,12 @@ namespace FE.Presentation
             if (attacker == null || attackTargets == null || attackTargets.Count <= 0) return;
 
             actionMenuView.Hide();
-            isBattleForecastOpen = true;
-            pointer.lockInput = true;
+            resultView.SetActions(
+                OnEscapePressed,
+                OnQPressed,
+                OnEPressed,
+                OnConfirmPressed);
+            ChangeState(BattleStatus.BattleForecast);
 
             curSelectEnemyIndex = 0;
             RefreshCurrentTarget();
@@ -209,7 +231,7 @@ namespace FE.Presentation
 
         private void RefreshCurrentTarget()
         {
-            if (!isBattleForecastOpen ||
+            if (battleStatus != BattleStatus.BattleForecast ||
                 curSelectPlayer == null ||
                 curAttackTargets == null ||
                 curAttackTargets.Count == 0)
@@ -223,7 +245,23 @@ namespace FE.Presentation
 
             BattleUnit target = curAttackTargets[curSelectEnemyIndex];
 
-            resultView.Show(curSelectPlayer, target);
+            if (previewGrid == null ||
+                !CombatForecastQuery.TryCalculate(
+                    context,
+                    curSelectPlayer,
+                    target,
+                    previewGrid.Value,
+                    out CombatForecastResult forecast))
+            {
+                Debug.LogError(
+                    $"Failed to calculate combat forecast for " +
+                    $"{curSelectPlayer.Id} and {target.Id}.");
+                ReturnToActionMenu();
+                return;
+            }
+
+            curAttackTarget = target;
+            resultView.Show(forecast, curSelectPlayer, target);
 
             gridMapView.ClearSelected();
             gridMapView.SetSelected(target.CurGrid);
@@ -231,7 +269,7 @@ namespace FE.Presentation
 
         private void OnQPressed()
         {
-            if (!isBattleForecastOpen ||
+            if (battleStatus != BattleStatus.BattleForecast ||
                 curAttackTargets == null ||
                 curAttackTargets.Count == 0)
             {
@@ -245,7 +283,7 @@ namespace FE.Presentation
 
         private void OnEPressed()
         {
-            if (!isBattleForecastOpen ||
+            if (battleStatus != BattleStatus.BattleForecast ||
                 curAttackTargets == null ||
                 curAttackTargets.Count == 0)
             {
@@ -259,33 +297,157 @@ namespace FE.Presentation
 
         private void OnEscapePressed()
         {
-            if (!isBattleForecastOpen) return;
+            if (battleStatus != BattleStatus.BattleForecast) return;
             if (curSelectPlayer == null || curAttackTargets == null) return;
 
+            ReturnToActionMenu();
+        }
+
+        private void OnConfirmPressed()
+        {
+            if (battleStatus != BattleStatus.BattleForecast ||
+                curSelectPlayer == null ||
+                curAttackTarget == null ||
+                !previewGrid.HasValue)
+            {
+                return;
+            }
+
+            BattleUnit attacker = curSelectPlayer;
+            BattleUnit defender = curAttackTarget;
+            GridCoord destination = previewGrid.Value;
+
             resultView.Hide();
-            isBattleForecastOpen = false;
-            pointer.lockInput = false;
+            ChangeState(BattleStatus.ResolvingCombat);
+            BattleCommandResult result = commandProcessor.Execute(
+                new MoveAndAttackCommand(
+                    attacker.Id,
+                    defender.Id,
+                    destination));
 
+            if (!result.IsSuccess)
+            {
+                Debug.LogError(result.ErrorMessage);
+                ShowMoveActionMenu();
+                return;
+            }
+
+            battleUnitsViewController.TryGetUnitViewById(attacker.Id, out var attackerView);
+            battleUnitsViewController.TryGetUnitViewById(defender.Id, out var defenderView);
+            if (attackerView == null || defenderView == null)
+            {
+                battleUnitsViewController.RefreshAfterCommand(context);
+                ClearInactiveEnemySelections();
+                ClearAllSelectionStatus(attacker);
+                return;
+            }
+
+            combatPresentationController.StartCoroutine(
+                combatPresentationController.PlayCombatRoutine(
+                    attackerView,
+                    defenderView,
+                    result.AttackResult,
+                    () => OnCombatPresentationCompleted(
+                        attacker,
+                        defender,
+                        destination)));
+        }
+
+        private void OnCombatPresentationCompleted(
+            BattleUnit attacker,
+            BattleUnit defender,
+            GridCoord destination)
+        {
+            if (battleStatus != BattleStatus.ResolvingCombat ||
+                !ReferenceEquals(curSelectPlayer, attacker) ||
+                !ReferenceEquals(curAttackTarget, defender) ||
+                previewGrid != destination)
+            {
+                return;
+            }
+
+            battleUnitsViewController.RefreshAfterCommand(context);
+            ClearInactiveEnemySelections();
+            ClearAllSelectionStatus(attacker);
+        }
+
+        private void ReturnToActionMenu()
+        {
+            resultView.Hide();
             curSelectEnemyIndex = 0;
+            curAttackTarget = null;
+            ShowMoveActionMenu();
+        }
 
+        private void ShowMoveActionMenu()
+        {
+            if (curSelectPlayer == null ||
+                curOpUnitView == null ||
+                !previewGrid.HasValue)
+            {
+                return;
+            }
+
+            bool canAttack =
+                curAttackTargets != null &&
+                curAttackTargets.Count > 0;
+
+            BattleUnit selectedUnit = curSelectPlayer;
+            BattleUnitView selectedUnitView = curOpUnitView;
+            List<BattleUnit> attackTargets = curAttackTargets;
+            GridCoord destination = previewGrid.Value;
+
+            ChangeState(BattleStatus.ActionMenu);
             actionMenuView.Show(
-                curSelectPlayer,
-                true,
-                curAttackTargets.Count > 0 ?
-                    () => CommitMoveAndAttack(curSelectPlayer, curAttackTargets) : null,
+                selectedUnit,
+                canAttack,
+                canAttack
+                    ? () => CommitMoveAndAttack(
+                        selectedUnit,
+                        attackTargets)
+                    : null,
                 () => CommitMoveAndWait(
-                    curSelectPlayer,
-                    curOpUnitView,
-                    previewGrid.Value),
+                    selectedUnit,
+                    selectedUnitView,
+                    destination),
                 () => CancelMovePreview(
-                    curSelectPlayer,
-                    curOpUnitView));
+                    selectedUnit,
+                    selectedUnitView));
+        }
+
+        private void ClearInactiveEnemySelections()
+        {
+            List<BattleUnit> inactiveEnemies = null;
+
+            foreach (BattleUnit enemy in selectedEnemies)
+            {
+                if (!enemy.IsDead)
+                {
+                    continue;
+                }
+
+                inactiveEnemies ??= new List<BattleUnit>();
+                inactiveEnemies.Add(enemy);
+            }
+
+            if (inactiveEnemies == null)
+            {
+                return;
+            }
+
+            foreach (BattleUnit enemy in inactiveEnemies)
+            {
+                selectedEnemies.Remove(enemy);
+                gridMapView.SetOffMovement(enemy.Id);
+                gridMapView.SetOffAttackRange(enemy.Id);
+            }
         }
 
         private void CancelMovePreview(
             BattleUnit unit,
             BattleUnitView unitView)
         {
+            //TODO 这里cancel应该回到上一步而不是直接取消选中
             unitView.RefreshToDefaultPosition();
             ClearAllSelectionStatus(unit);
         }
@@ -298,8 +460,11 @@ namespace FE.Presentation
             gridMapView.SetOffAttackRange(unit.Id);
             gridMapView.ClearSelected();
             battlePath.HidePath();
-            isMovePreview = false;
+            ChangeState(BattleStatus.Idle);
             previewGrid = null;
+            curAttackTargets = null;
+            curAttackTarget = null;
+            resultView.Hide();
             actionMenuView.Hide();
         }
 
@@ -328,6 +493,7 @@ namespace FE.Presentation
                 var range = AttackRangeQuery.CalculateCoverage(unit, context.Map, result);
                 if (range == null) return;
 
+                ChangeState(BattleStatus.UnitSelected);
                 gridMapView.SetInMovement(result, unit.Id);
                 gridMapView.SetInAttackRange(range,unit.Id);
                 gridMapView.SetSelected(unit.CurGrid);
@@ -369,8 +535,11 @@ namespace FE.Presentation
 
         public void OnHoverChanged(GridCoord? grid)
         {
-            if (battlePath == null || curSelectPlayer == null 
-            || curMovementRange == null || !grid.HasValue)
+            if (battleStatus != BattleStatus.UnitSelected ||
+                battlePath == null ||
+                curSelectPlayer == null ||
+                curMovementRange == null ||
+                !grid.HasValue)
             {
                 battlePath?.HidePath();
                 return;
@@ -385,6 +554,24 @@ namespace FE.Presentation
             battlePath.ShowPath(path);
         }
 
+        private bool CanHandleGridInput()
+        {
+            return battleStatus == BattleStatus.Idle ||
+                   battleStatus == BattleStatus.UnitSelected;
+        }
+
+        private void ChangeState(BattleStatus next)
+        {
+            battleStatus = next;
+
+            if (pointer != null)
+            {
+                pointer.lockInput =
+                    next != BattleStatus.Idle &&
+                    next != BattleStatus.UnitSelected;
+            }
+        }
+
         public void Dispose()
         {
             if (pointer != null)
@@ -396,13 +583,13 @@ namespace FE.Presentation
 
             if (resultView != null)
             {
-                resultView.ChangeToNextTarget -= OnEPressed;
-                resultView.ChangeToPreviousTarget -= OnQPressed;
-                resultView.EscapeAction -= OnEscapePressed;
                 resultView.Hide();
             }
 
-            pointer.lockInput = false;
+            if (pointer != null)
+            {
+                pointer.lockInput = false;
+            }
         }
     }
 }

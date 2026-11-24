@@ -43,7 +43,7 @@ namespace FE.Core
             int finalDmg = amount;
             int oldHP = CurHP;
             CurHP = Math.Max(0, CurHP - finalDmg);
-            return oldHP > finalDmg ? oldHP - finalDmg : oldHP;
+            return oldHP - CurHP;
         }
 
         internal void MoveTo(GridCoord destination)

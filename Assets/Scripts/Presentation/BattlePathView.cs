@@ -39,7 +39,10 @@ namespace FE.Presentation
 
         public void HidePath()
         {
-            lineRenderer.positionCount = 0;
+            if (lineRenderer != null)
+            {
+                lineRenderer.positionCount = 0;
+            }
             enabled = false;
         }
     }

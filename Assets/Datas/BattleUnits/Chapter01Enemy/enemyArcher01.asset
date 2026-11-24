@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: enemyArcher01
   m_EditorClassIdentifier: 
   displayName: 
-  maxHP: 25
+  maxHP: 20
   pAtk: 10
-  phyDef: 3
+  phyDef: 0
   mAtk: 10
   magicDef: 3
   hit: 80

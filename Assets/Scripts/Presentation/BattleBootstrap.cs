@@ -20,6 +20,8 @@ namespace FE.Presentation
         [SerializeField] private BattlePathView battlePathView;
         [SerializeField] private BattleActionMenuView battleActionMenuView;
         [SerializeField] private BattleForecastView battleForecastView;
+        [SerializeField] private int battleRandomSeed = 1;
+        [SerializeField] private BattleCombatPresentationController battleCombatPresentationController;
 
 
         private BattleSelectionController battleSelectionController;
@@ -27,7 +29,9 @@ namespace FE.Presentation
         {
             BattleSetUpFactory factory = new BattleSetUpFactory();
             battleSelectionController = new BattleSelectionController();
-            BattleContext context = factory.CreateContext(encounterConfig);
+            BattleContext context = factory.CreateContext(
+                encounterConfig,
+                battleRandomSeed);
             BattleCommandProcessor commandProcessor =
                 new BattleCommandProcessor(context);
 
@@ -39,7 +43,7 @@ namespace FE.Presentation
 
             battleSelectionController.Init(gridMap, context, gridPointerController, 
                 battlePathView, battleUnitsViewController, battleActionMenuView,
-                commandProcessor, battleForecastView);
+                commandProcessor, battleForecastView, battleCombatPresentationController);
         }
 
         private void OnDestroy()

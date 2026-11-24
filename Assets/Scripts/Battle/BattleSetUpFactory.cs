@@ -8,7 +8,9 @@ namespace FE.Battle
     /// </summary>
     public class BattleSetUpFactory
     {
-        public BattleContext CreateContext(BattleEncounterConfig config)
+        public BattleContext CreateContext(
+            BattleEncounterConfig config,
+            int battleRandomSeed)
         {
             if (config == null)
             {
@@ -63,7 +65,10 @@ namespace FE.Battle
                 value++;
                 curId = new UnitId(value);
             }
-            return new BattleContext(map, controller);
+            return new BattleContext(
+                map,
+                controller,
+                new SeededBattleRandom(battleRandomSeed));
         }
     }
 }

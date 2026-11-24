@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: shielder
   m_EditorClassIdentifier: 
   displayName: "\u8FD1\u536B"
-  maxHP: 25
-  pAtk: 10
-  phyDef: 3
-  mAtk: 10
+  maxHP: 30
+  pAtk: 15
+  phyDef: 8
+  mAtk: 0
   magicDef: 3
-  hit: 80
+  hit: 70
   avoid: 0
-  movement: 3
+  movement: 8
   minAttackRange: 1
   maxAttackRange: 1

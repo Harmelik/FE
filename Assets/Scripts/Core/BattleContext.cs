@@ -10,13 +10,17 @@ namespace FE.Core
     {
         public BattleMap Map { get; }
         public BattleUnitController Units { get; }
+        public IBattleRandom BattleRandom { get; }
 
         public BattleContext(
             BattleMap map,
-            BattleUnitController units)
+            BattleUnitController units,
+            IBattleRandom battleRandom)
         {
             Map = map ?? throw new ArgumentNullException(nameof(map));
             Units = units ?? throw new ArgumentNullException(nameof(units));
+            BattleRandom = battleRandom ??
+                throw new ArgumentNullException(nameof(battleRandom));
         }
     }
 }

@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: archer
   m_EditorClassIdentifier: 
   displayName: "\u730E\u624B"
-  maxHP: 25
+  maxHP: 22
   pAtk: 10
   phyDef: 3
-  mAtk: 10
+  mAtk: 0
   magicDef: 3
-  hit: 80
-  avoid: 0
+  hit: 100
+  avoid: 30
   movement: 7
   minAttackRange: 2
   maxAttackRange: 3

@@ -24,9 +24,10 @@ namespace FE.Presentation
         [SerializeField] private TMP_Text enemyHit;
         [SerializeField] private Slider enemyHPSlider;
         [SerializeField] private CanvasGroup canvasGroup;
-        public Action EscapeAction;
-        public Action ChangeToPreviousTarget;
-        public Action ChangeToNextTarget;
+        private Action onEscape;
+        private Action onChangeToPreviousTarget;
+        private Action onChangeToNextTarget;
+        private Action onConfirm;
 
         private void Awake()
         {
@@ -36,27 +37,55 @@ namespace FE.Presentation
 
         public void Hide()
         {
-            this.SetVisible(false);
+            ClearActions();
+            SetVisible(false);
         }
 
-        public void Show(BattleUnit player, BattleUnit enemy)
+        public void SetActions(
+            Action escapeAction,
+            Action changeToPreviousTarget,
+            Action changeToNextTarget,
+            Action confirmAction)
         {
+            onEscape = escapeAction;
+            onChangeToPreviousTarget = changeToPreviousTarget;
+            onChangeToNextTarget = changeToNextTarget;
+            onConfirm = confirmAction;
+        }
+
+        public void Show(
+            CombatForecastResult forecast,
+            BattleUnit player,
+            BattleUnit enemy)
+        {
+            if (player == null || enemy == null)
+            {
+                Hide();
+                return;
+            }
+
             SetVisible(true);
-            //TODO 先在这里做简单计算，后面估计得委托给别的地方做然后在这里只负责展示
             playerUnitName.text = player.DisplayName;
             enemyUnitName.text = enemy.DisplayName;
 
-            var playerGotDmg = Math.Max(0, enemy.BaseStats.PAtk - player.BaseStats.PhyDef);
-            playerLeftHP.text = (player.CurHP - playerGotDmg).ToString();
-            playerHPSlider.value = ((player.CurHP - playerGotDmg) / (float)player.BaseStats.MaxHP);
-            enemyAtk.text = playerGotDmg.ToString();
-            playerHit.text = $"{player.BaseStats.Hit - enemy.BaseStats.Avoid}%";
+            CombatSideForecast playerForecast = forecast.AttackerForecast;
+            CombatSideForecast enemyForecast = forecast.DefenderForecast;
 
-            var enemyGotDmg = Math.Max(0, player.BaseStats.PAtk - enemy.BaseStats.PhyDef);
-            enemyLeftHP.text = (enemy.CurHP - enemyGotDmg).ToString();
-            enemyHPSlider.value = ((enemy.CurHP - enemyGotDmg) / (float)enemy.BaseStats.MaxHP);
-            playerAtk.text = enemyGotDmg.ToString();
-            enemyHit.text = $"{enemy.BaseStats.Hit - player.BaseStats.Avoid}%";
+            playerLeftHP.text = playerForecast.ProjectedHp.ToString();
+            playerHPSlider.value =
+                playerForecast.ProjectedHp / (float)playerForecast.MaxHp;
+            playerAtk.text = playerForecast.Damage.ToString();
+            playerHit.text = $"{playerForecast.HitChance}%";
+
+            enemyLeftHP.text = enemyForecast.ProjectedHp.ToString();
+            enemyHPSlider.value =
+                enemyForecast.ProjectedHp / (float)enemyForecast.MaxHp;
+            enemyAtk.text = enemyForecast.CanAttack
+                ? enemyForecast.Damage.ToString()
+                : "--";
+            enemyHit.text = enemyForecast.CanAttack
+                ? $"{enemyForecast.HitChance}%"
+                : "--";
         }
 
         private void Update()
@@ -64,18 +93,35 @@ namespace FE.Presentation
             if (canvasGroup == null || canvasGroup.alpha != 1) return;
             if (Input.GetKeyDown(KeyCode.Escape))
             {
-                EscapeAction?.Invoke();
+                onEscape?.Invoke();
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Space) ||
+                Input.GetKeyDown(KeyCode.Return) ||
+                Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                onConfirm?.Invoke();
+                return;
             }
 
             if (Input.GetKeyDown(KeyCode.Q))
             {
-                ChangeToPreviousTarget?.Invoke();
+                onChangeToPreviousTarget?.Invoke();
             }
 
             if (Input.GetKeyDown(KeyCode.E))
             {
-                ChangeToNextTarget?.Invoke();
+                onChangeToNextTarget?.Invoke();
             }
+        }
+
+        private void ClearActions()
+        {
+            onEscape = null;
+            onChangeToPreviousTarget = null;
+            onChangeToNextTarget = null;
+            onConfirm = null;
         }
 
         private void SetVisible(bool visible)

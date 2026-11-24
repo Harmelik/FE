@@ -34,6 +34,30 @@ namespace FE.Presentation
                    unitViews.TryGetValue(id, out unitView) &&
                    unitView != null;
         }
+
+        public void RefreshAfterCommand(BattleContext context)
+        {
+            if (context == null || unitViews == null)
+            {
+                return;
+            }
+
+            foreach (BattleUnit unit in context.Units.AllUnits)
+            {
+                if (!unitViews.TryGetValue(unit.Id, out BattleUnitView view) ||
+                    view == null)
+                {
+                    continue;
+                }
+
+                view.gameObject.SetActive(!unit.IsDead);
+
+                if (!unit.IsDead)
+                {
+                    view.RefreshToDefaultPosition();
+                }
+            }
+        }
     }
 }
 

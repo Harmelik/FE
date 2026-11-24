@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   displayName: "\u5251\u5723"
   maxHP: 25
-  pAtk: 10
-  phyDef: 3
+  pAtk: 13
+  phyDef: 5
   mAtk: 10
-  magicDef: 3
-  hit: 80
-  avoid: 0
-  movement: 3
+  magicDef: 5
+  hit: 90
+  avoid: 20
+  movement: 5
   minAttackRange: 1
-  maxAttackRange: 1
+  maxAttackRange: 2
