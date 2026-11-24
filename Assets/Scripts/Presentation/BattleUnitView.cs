@@ -21,6 +21,8 @@ namespace FE.Presentation
         private Sequence previewTween;
         private Tween combatTween;
         private Vector3 defaultScale;
+        private MaterialPropertyBlock propertyBlock;
+        private Color baseMaterialColor;
 
         public void Init(BattleUnit unit, GridGeometry gg)
         {
@@ -41,6 +43,7 @@ namespace FE.Presentation
                 } break;
             }
 
+            baseMaterialColor = mesh.sharedMaterial.color;
             transform.position = GetUnitWorldPosition(battleUnit.CurGrid);
         }
 
@@ -193,9 +196,21 @@ namespace FE.Presentation
                    Vector3.up * offsetY;
         }
 
-        public void SetGrayed()
+        public void SetGrayed(bool isGrayed)
         {
-            //TODO 行动完的角色置灰
+            if (mesh == null || mesh.sharedMaterial == null)
+            {
+                return;
+            }
+
+            propertyBlock ??= new MaterialPropertyBlock();
+            mesh.GetPropertyBlock(propertyBlock);
+            propertyBlock.SetColor(
+                "_Color",
+                isGrayed
+                    ? Color.Lerp(baseMaterialColor, Color.gray, 0.7f)
+                    : baseMaterialColor);
+            mesh.SetPropertyBlock(propertyBlock);
         }
 
         private void OnDestroy()

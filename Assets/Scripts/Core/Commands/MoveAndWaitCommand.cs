@@ -41,6 +41,13 @@ namespace FE.Core
                     $"Unit {UnitId} has already acted.");
             }
 
+            if (!context.Turns.CanFactionAct(unit.Fac))
+            {
+                return BattleCommandResult.Failure(
+                    $"Faction {unit.Fac} cannot act during " +
+                    $"{context.Turns.CurrentPhase}.");
+            }
+
             if (!MovementQuery.TryCalculate(
                     unit,
                     context.Map,

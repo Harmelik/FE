@@ -24,6 +24,18 @@ namespace FE.Presentation
 
         public bool lockInput;
 
+        public bool IsGameplayInputEnabled => !lockInput;
+
+        public void SetGameplayInputEnabled(bool isEnabled)
+        {
+            lockInput = !isEnabled;
+
+            if (!isEnabled)
+            {
+                UpdateHoveredGrid(null);
+            }
+        }
+
         private void Update()
         {
             if (!isInit) return;

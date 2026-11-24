@@ -12,7 +12,8 @@ namespace FE.Presentation
         MovePreviewing,
         ActionMenu,
         BattleForecast,
-        ResolvingCombat
+        ResolvingCombat,
+        PhaseTransition
     }
 
     /// <summary>
@@ -466,11 +467,18 @@ namespace FE.Presentation
             curAttackTarget = null;
             resultView.Hide();
             actionMenuView.Hide();
+            battleUnitsViewController.RefreshActionStates(context);
         }
 
         public void OnClickPlayer(BattleUnit unit)
         {
-            if (unit == null || unit.IsDead || unit.Fac != Faction.Player || unit.HasActed) return;
+            if (unit == null ||
+                unit.IsDead ||
+                unit.Fac != Faction.Player ||
+                !context.Turns.CanUnitAct(unit))
+            {
+                return;
+            }
             
             ////点击正在操作中的弟子，取消该弟子的当前选择
             //if (unit == curSelectPlayer)
@@ -533,6 +541,35 @@ namespace FE.Presentation
             }
         }
 
+        public bool TryBeginPhaseTransition()
+        {
+            if (battleStatus != BattleStatus.Idle &&
+                battleStatus != BattleStatus.UnitSelected)
+            {
+                return false;
+            }
+
+            if (curSelectPlayer != null)
+            {
+                ClearAllSelectionStatus(curSelectPlayer);
+            }
+
+            ClearEnemySelections();
+            ChangeState(BattleStatus.PhaseTransition);
+            return true;
+        }
+
+        public void CompletePhaseTransition()
+        {
+            if (battleStatus != BattleStatus.PhaseTransition)
+            {
+                return;
+            }
+
+            ChangeState(BattleStatus.Idle);
+            battleUnitsViewController.RefreshActionStates(context);
+        }
+
         public void OnHoverChanged(GridCoord? grid)
         {
             if (battleStatus != BattleStatus.UnitSelected ||
@@ -566,10 +603,21 @@ namespace FE.Presentation
 
             if (pointer != null)
             {
-                pointer.lockInput =
-                    next != BattleStatus.Idle &&
-                    next != BattleStatus.UnitSelected;
+                pointer.SetGameplayInputEnabled(
+                    next == BattleStatus.Idle ||
+                    next == BattleStatus.UnitSelected);
             }
+        }
+
+        private void ClearEnemySelections()
+        {
+            foreach (BattleUnit enemy in selectedEnemies)
+            {
+                gridMapView.SetOffMovement(enemy.Id);
+                gridMapView.SetOffAttackRange(enemy.Id);
+            }
+
+            selectedEnemies.Clear();
         }
 
         public void Dispose()
@@ -588,7 +636,7 @@ namespace FE.Presentation
 
             if (pointer != null)
             {
-                pointer.lockInput = false;
+                pointer.SetGameplayInputEnabled(true);
             }
         }
     }

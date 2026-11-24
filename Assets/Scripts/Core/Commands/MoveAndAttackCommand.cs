@@ -51,6 +51,13 @@ namespace FE.Core
                     $"Unit {AttackerId} has already acted.");
             }
 
+            if (!context.Turns.CanFactionAct(attacker.Fac))
+            {
+                return BattleCommandResult.Failure(
+                    $"Faction {attacker.Fac} cannot act during " +
+                    $"{context.Turns.CurrentPhase}.");
+            }
+
             if (!MovementQuery.TryCalculate(
                     attacker,
                     context.Map,

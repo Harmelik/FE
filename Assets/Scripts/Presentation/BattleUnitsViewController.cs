@@ -55,7 +55,28 @@ namespace FE.Presentation
                 if (!unit.IsDead)
                 {
                     view.RefreshToDefaultPosition();
+                    view.SetGrayed(unit.HasActed);
                 }
+            }
+        }
+
+        public void RefreshActionStates(BattleContext context)
+        {
+            if (context == null || unitViews == null)
+            {
+                return;
+            }
+
+            foreach (BattleUnit unit in context.Units.AllUnits)
+            {
+                if (unit.IsDead ||
+                    !unitViews.TryGetValue(unit.Id, out BattleUnitView view) ||
+                    view == null)
+                {
+                    continue;
+                }
+
+                view.SetGrayed(unit.HasActed);
             }
         }
     }

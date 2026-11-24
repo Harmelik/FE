@@ -25,6 +25,7 @@ namespace FE.Presentation
 
 
         private BattleSelectionController battleSelectionController;
+        private BattleTurnPresentationController battleTurnPresentationController;
         public void Start()
         {
             BattleSetUpFactory factory = new BattleSetUpFactory();
@@ -44,6 +45,22 @@ namespace FE.Presentation
             battleSelectionController.Init(gridMap, context, gridPointerController, 
                 battlePathView, battleUnitsViewController, battleActionMenuView,
                 commandProcessor, battleForecastView, battleCombatPresentationController);
+
+            battleTurnPresentationController =
+                GetComponent<BattleTurnPresentationController>();
+
+            if (battleTurnPresentationController == null)
+            {
+                battleTurnPresentationController =
+                    gameObject.AddComponent<BattleTurnPresentationController>();
+            }
+
+            battleTurnPresentationController.Init(
+                context,
+                commandProcessor,
+                battleSelectionController,
+                gridPointerController,
+                battleUnitsViewController);
         }
 
         private void OnDestroy()

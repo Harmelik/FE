@@ -65,10 +65,14 @@ namespace FE.Battle
                 value++;
                 curId = new UnitId(value);
             }
+            BattleTurnController turns =
+                new BattleTurnController(controller);
+
             return new BattleContext(
                 map,
                 controller,
-                new SeededBattleRandom(battleRandomSeed));
+                new SeededBattleRandom(battleRandomSeed),
+                turns);
         }
     }
 }
