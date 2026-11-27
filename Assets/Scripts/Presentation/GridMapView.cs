@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using FE.Battle;
 using FE.Core;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace FE.Presentation
 {
@@ -11,9 +10,10 @@ namespace FE.Presentation
     /// </summary>
     public class GridMapView : MonoBehaviour
     {
-        [SerializeField] private GridTileView tilePrefab;
+        [SerializeField] private TerrainTileCatalog terrainTileCatalog;
 
         private GridTileView[,] tileObjects;
+        private GridGeometry geometry;
 
         private bool hasHoveredGrid;
         private bool hasSelectedGrid;
@@ -21,11 +21,14 @@ namespace FE.Presentation
         private GridCoord curSelectedGrid;
         private Dictionary<GridCoord, HashSet<UnitId>> inMovementGrids = new();
         private Dictionary<GridCoord, HashSet<UnitId>> inAttackGrids = new();
+        private Dictionary<GridCoord, HashSet<UnitId>> inHoverMovementGrids = new();
+        private Dictionary<GridCoord, HashSet<UnitId>> inHoverAttackGrids = new();
 
         public void CreateTiles(BattleMap map, GridGeometry gg)
         {
             ClearTiles();
 
+            geometry = gg;
             tileObjects = new GridTileView[map.Width, map.Height];
 
             for (var i = 0; i < map.Width; i++)
@@ -33,12 +36,42 @@ namespace FE.Presentation
                 for (var j = 0; j < map.Height; j++)
                 {
                     GridCoord grid = new GridCoord(i, j);
-                    var go = Instantiate(tilePrefab, transform);
-                    go.name = $"{i}_{j}";
-                    go.transform.position = gg.GetCellCenter(grid);
-                    tileObjects[i,j] = go;
+                    TerrainType terrainType =
+                        map.GetTerrainType(grid);
+                    GridTileView tilePrefab =
+                        terrainTileCatalog.GetPrefab(terrainType);
+                    GridTileView tile =
+                        Instantiate(tilePrefab, transform);
+                    tile.name =
+                        $"{i}_{j}_{terrainType}";
+                    tile.transform.position =
+                        gg.GetCellCenter(grid);
+                    tileObjects[i, j] = tile;
                 }
             }
+        }
+
+        public Vector3 GetWorldPosition(
+            GridCoord grid,
+            float extraHeight = 0f)
+        {
+            float surfaceHeight =
+                TryGetTile(grid, out GridTileView tile)
+                    ? tile.SurfaceHeight
+                    : 0f;
+
+            return geometry.GetCellCenter(grid) +
+                   Vector3.up * (surfaceHeight + extraHeight);
+        }
+
+        public void RefreshTerrain(BattleMap map)
+        {
+            if (map == null || geometry == null)
+            {
+                return;
+            }
+
+            CreateTiles(map, geometry);
         }
 
         private void ClearTiles()
@@ -55,8 +88,13 @@ namespace FE.Presentation
             }
 
             tileObjects = null;
+            geometry = null;
             hasHoveredGrid = false;
             hasSelectedGrid = false;
+            inMovementGrids.Clear();
+            inAttackGrids.Clear();
+            inHoverMovementGrids.Clear();
+            inHoverAttackGrids.Clear();
         }
 
         public void SetHovered(GridCoord grid)
@@ -156,15 +194,7 @@ namespace FE.Presentation
 
         private void RefreshMovement()
         {
-            foreach (var grid in inMovementGrids)
-            {
-                if (!TryGetTile(grid.Key, out GridTileView tileView))
-                {
-                    continue;
-                }
-
-                tileView.SetMovement(grid.Value.Count > 0);
-            }
+            RefreshRangeTiles();
         }
 
         private void RemoveMovementRangeSource(UnitId unitId)
@@ -216,19 +246,137 @@ namespace FE.Presentation
             RefreshAttackRange();
         }
 
-        private void RefreshAttackRange()
+        public void SetInHoverMovement(
+            MovementRange range,
+            UnitId unitId)
         {
-            foreach (var grid in inAttackGrids)
+            if (range == null)
             {
-                if (!TryGetTile(grid.Key, out GridTileView tileView))
+                return;
+            }
+
+            RemoveHoverMovementRangeSource(unitId);
+
+            foreach (GridCoord grid in range.Destinations)
+            {
+                if (!inHoverMovementGrids.TryGetValue(
+                        grid,
+                        out HashSet<UnitId> ids))
                 {
-                    continue;
+                    ids = new HashSet<UnitId>();
+                    inHoverMovementGrids.Add(grid, ids);
                 }
 
-                tileView.SetAttack(grid.Value.Count > 0);
-                if(!inMovementGrids.ContainsKey(grid.Key)) continue;
-                tileView.SetMovement(inMovementGrids[grid.Key].Count > 0);
+                ids.Add(unitId);
             }
+
+            RefreshMovement();
+        }
+
+        public void SetOffHoverMovement(UnitId unitId)
+        {
+            RemoveHoverMovementRangeSource(unitId);
+            RefreshMovement();
+        }
+
+        public void SetInHoverAttackRange(
+            IEnumerable<GridCoord> attackRange,
+            UnitId unitId)
+        {
+            if (attackRange == null)
+            {
+                return;
+            }
+
+            RemoveHoverAttackRangeSource(unitId);
+
+            foreach (GridCoord grid in attackRange)
+            {
+                if (!inHoverAttackGrids.TryGetValue(
+                        grid,
+                        out HashSet<UnitId> ids))
+                {
+                    ids = new HashSet<UnitId>();
+                    inHoverAttackGrids.Add(grid, ids);
+                }
+
+                ids.Add(unitId);
+            }
+
+            RefreshAttackRange();
+        }
+
+        public void SetOffHoverAttackRange(UnitId unitId)
+        {
+            RemoveHoverAttackRangeSource(unitId);
+            RefreshAttackRange();
+        }
+
+        private void RefreshAttackRange()
+        {
+            RefreshRangeTiles();
+        }
+
+        private void RemoveHoverMovementRangeSource(UnitId unitId)
+        {
+            foreach (HashSet<UnitId> ids in
+                     inHoverMovementGrids.Values)
+            {
+                ids.Remove(unitId);
+            }
+        }
+
+        private void RemoveHoverAttackRangeSource(UnitId unitId)
+        {
+            foreach (HashSet<UnitId> ids in
+                     inHoverAttackGrids.Values)
+            {
+                ids.Remove(unitId);
+            }
+        }
+
+        private void RefreshRangeTiles()
+        {
+            if (tileObjects == null)
+            {
+                return;
+            }
+
+            for (int x = 0; x < tileObjects.GetLength(0); x++)
+            {
+                for (int y = 0; y < tileObjects.GetLength(1); y++)
+                {
+                    GridTileView tileView = tileObjects[x, y];
+                    if (tileView == null)
+                    {
+                        continue;
+                    }
+
+                    var grid = new GridCoord(x, y);
+                    tileView.SetMovement(
+                        HasRangeSource(inMovementGrids, grid));
+                    tileView.SetAttack(
+                        HasRangeSource(inAttackGrids, grid));
+                    tileView.SetHoverMovement(
+                        HasRangeSource(
+                            inHoverMovementGrids,
+                            grid));
+                    tileView.SetHoverAttack(
+                        HasRangeSource(
+                            inHoverAttackGrids,
+                            grid));
+                }
+            }
+        }
+
+        private static bool HasRangeSource(
+            Dictionary<GridCoord, HashSet<UnitId>> ranges,
+            GridCoord grid)
+        {
+            return ranges.TryGetValue(
+                       grid,
+                       out HashSet<UnitId> ids) &&
+                   ids.Count > 0;
         }
 
         private bool TryGetTile(GridCoord grid, out GridTileView tileView)
@@ -249,6 +397,16 @@ namespace FE.Presentation
 
             tileView = tileObjects[grid.x, grid.y];
             return tileView != null;
+        }
+
+        private void OnValidate()
+        {
+            if (terrainTileCatalog == null)
+            {
+                Debug.LogWarning(
+                    $"{name}: terrainTileCatalog is not assigned.",
+                    this);
+            }
         }
     }
 }

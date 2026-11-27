@@ -12,7 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 47eb34cfa863add40b9b5413ba1493f9, type: 3}
   m_Name: enemyArcher01
   m_EditorClassIdentifier: 
-  displayName: 
+  displayName: "\u654C\u65B9\u5F13\u624B"
+  level: 1
+  unitClass: {fileID: 11400000, guid: 69d370f69cbf40139b55eca9e81b3a53, type: 2}
+  equippedWeapon: {fileID: 11400000, guid: 56816b12e90e4f20b5cc36da1338f0ad, type: 2}
   maxHP: 20
   pAtk: 10
   phyDef: 0
@@ -20,6 +23,3 @@ MonoBehaviour:
   magicDef: 3
   hit: 80
   avoid: 0
-  movement: 3
-  minAttackRange: 1
-  maxAttackRange: 1

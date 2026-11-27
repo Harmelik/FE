@@ -1,6 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using Codice.CM.Common;
 using FE.Battle;
 using FE.Core;
 using UnityEngine;
@@ -13,10 +11,14 @@ namespace FE.Presentation
     public class BattlePathView : MonoBehaviour
     {
         private GridGeometry gg;
+        private GridMapView gridMapView;
         [SerializeField] private LineRenderer lineRenderer;
-        public void Init(GridGeometry gg)
+        public void Init(
+            GridGeometry gg,
+            GridMapView gridMapView)
         {
             this.gg = gg;
+            this.gridMapView = gridMapView;
         }
 
         public void ShowPath(IReadOnlyList<GridCoord> path)
@@ -31,7 +33,9 @@ namespace FE.Presentation
             var pos = new Vector3[path.Count];
             for(var i = 0; i < path.Count; i++)
             {
-                var p = gg.GetCellCenter(path[i]);
+                Vector3 p = gridMapView.GetWorldPosition(
+                    path[i],
+                    0.03f);
                 pos[i] = p;
             }
             lineRenderer.SetPositions(pos);

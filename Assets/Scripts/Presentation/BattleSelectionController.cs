@@ -5,24 +5,26 @@ using UnityEngine;
 
 namespace FE.Presentation
 {
-    public enum BattleStatus
-    {
-        Idle,
-        UnitSelected,
-        MovePreviewing,
-        ActionMenu,
-        BattleForecast,
-        ResolvingCombat,
-        PhaseTransition
-    }
-
     /// <summary>
     /// 判断点击具体点击的是哪个物体
     /// </summary>
     public class BattleSelectionController:IDisposable
     {
+        private enum BattleStatus
+        {
+            Idle,
+            UnitSelected,
+            MovePreviewing,
+            ActionMenu,
+            BattleForecast,
+            ResolvingCombat,
+            PhaseTransition,
+            BattleEnded
+        }
+
         private BattleUnit curSelectPlayer;
-        private HashSet<BattleUnit> selectedEnemies = new HashSet<BattleUnit>();
+        private readonly EnemyRangeSelectionTracker enemyRangeSelection =
+            new EnemyRangeSelectionTracker();
         private GridMapView gridMapView;
         private BattleContext context;
         private GridPointerController pointer;
@@ -39,12 +41,23 @@ namespace FE.Presentation
         private BattleUnitView curOpUnitView;
         private BattleStatus battleStatus;
         private BattleCombatPresentationController combatPresentationController;
+        private UnitInfoView unitInfoView;
+        private BattleUnit hoveredUnit;
+        private bool isExternalInputSuspended;
+
+        public event Action<BattleOutcomeResult> BattleEnded;
+
+        public bool CanOpenBattleMenu =>
+            !isExternalInputSuspended &&
+            (battleStatus == BattleStatus.Idle ||
+             battleStatus == BattleStatus.UnitSelected);
 
         public void Init(GridMapView mapView, BattleContext context, 
             GridPointerController gridPointerController, BattlePathView battlePathView,
             BattleUnitsViewController battleUnitsViewController, BattleActionMenuView actionMenuView,
             BattleCommandProcessor commandProcessor, BattleForecastView resultView,
-            BattleCombatPresentationController combatPresentationController)
+            BattleCombatPresentationController combatPresentationController,
+            UnitInfoView unitInfoView)
         {
             if (mapView == null || context == null 
             || gridPointerController == null || battlePathView == null
@@ -59,6 +72,7 @@ namespace FE.Presentation
             this.actionMenuView = actionMenuView;
             this.commandProcessor = commandProcessor;
             this.combatPresentationController = combatPresentationController;
+            this.unitInfoView = unitInfoView;
 
             if (pointer != null)
             {
@@ -351,13 +365,15 @@ namespace FE.Presentation
                     () => OnCombatPresentationCompleted(
                         attacker,
                         defender,
-                        destination)));
+                        destination,
+                        result.BattleOutcome)));
         }
 
         private void OnCombatPresentationCompleted(
             BattleUnit attacker,
             BattleUnit defender,
-            GridCoord destination)
+            GridCoord destination,
+            BattleOutcomeResult? battleOutcome)
         {
             if (battleStatus != BattleStatus.ResolvingCombat ||
                 !ReferenceEquals(curSelectPlayer, attacker) ||
@@ -370,6 +386,11 @@ namespace FE.Presentation
             battleUnitsViewController.RefreshAfterCommand(context);
             ClearInactiveEnemySelections();
             ClearAllSelectionStatus(attacker);
+
+            if (battleOutcome.HasValue)
+            {
+                EnterBattleEnded(battleOutcome.Value);
+            }
         }
 
         private void ReturnToActionMenu()
@@ -418,17 +439,21 @@ namespace FE.Presentation
 
         private void ClearInactiveEnemySelections()
         {
-            List<BattleUnit> inactiveEnemies = null;
+            List<UnitId> inactiveEnemies = null;
 
-            foreach (BattleUnit enemy in selectedEnemies)
+            foreach (UnitId enemyId in
+                     enemyRangeSelection.CreateSnapshot())
             {
-                if (!enemy.IsDead)
+                BattleUnit enemy =
+                    context.Units.GetUnitById(enemyId);
+
+                if (enemy != null && !enemy.IsDead)
                 {
                     continue;
                 }
 
-                inactiveEnemies ??= new List<BattleUnit>();
-                inactiveEnemies.Add(enemy);
+                inactiveEnemies ??= new List<UnitId>();
+                inactiveEnemies.Add(enemyId);
             }
 
             if (inactiveEnemies == null)
@@ -436,11 +461,11 @@ namespace FE.Presentation
                 return;
             }
 
-            foreach (BattleUnit enemy in inactiveEnemies)
+            foreach (UnitId enemyId in inactiveEnemies)
             {
-                selectedEnemies.Remove(enemy);
-                gridMapView.SetOffMovement(enemy.Id);
-                gridMapView.SetOffAttackRange(enemy.Id);
+                enemyRangeSelection.Remove(enemyId);
+                gridMapView.SetOffMovement(enemyId);
+                gridMapView.SetOffAttackRange(enemyId);
             }
         }
 
@@ -479,6 +504,8 @@ namespace FE.Presentation
             {
                 return;
             }
+
+            ClearHoveredUnitRange();
             
             ////点击正在操作中的弟子，取消该弟子的当前选择
             //if (unit == curSelectPlayer)
@@ -515,10 +542,11 @@ namespace FE.Presentation
         {
             if (unit == null || unit.IsDead || unit.Fac != Faction.Enemy) return;
 
-            //点击已经被选中的敌人，取消该敌人的范围显示
-            if (selectedEnemies.Contains(unit))
+            ClearHoveredUnitRange();
+            bool isTracked = enemyRangeSelection.Toggle(unit.Id);
+
+            if (!isTracked)
             {
-                selectedEnemies.Remove(unit);
                 gridMapView.SetOffMovement(unit.Id);
                 gridMapView.SetOffAttackRange(unit.Id);
             }
@@ -526,7 +554,7 @@ namespace FE.Presentation
             {
                 if (!MovementQuery.TryCalculate(unit, context.Map, context.Units, out var result1))
                 {
-                    selectedEnemies.Remove(unit);
+                    enemyRangeSelection.Remove(unit.Id);
                     gridMapView.SetOffMovement(unit.Id);
                     gridMapView.SetOffAttackRange(unit.Id);
                     return;
@@ -536,9 +564,47 @@ namespace FE.Presentation
 
                 gridMapView.SetInMovement(result1, unit.Id);
                 gridMapView.SetInAttackRange(range, unit.Id);
-
-                selectedEnemies.Add(unit);
             }
+        }
+
+        public void RefreshAfterRewind(BattleContext context)
+        {
+            if (context == null)
+            {
+                return;
+            }
+
+            foreach (UnitId enemyId in
+                     enemyRangeSelection.CreateSnapshot())
+            {
+                gridMapView.SetOffMovement(enemyId);
+                gridMapView.SetOffAttackRange(enemyId);
+            }
+
+            enemyRangeSelection.Clear();
+
+            foreach (BattleUnit unit in context.Units.AllUnits)
+            {
+                gridMapView.SetOffMovement(unit.Id);
+                gridMapView.SetOffAttackRange(unit.Id);
+                gridMapView.SetOffHoverMovement(unit.Id);
+                gridMapView.SetOffHoverAttackRange(unit.Id);
+            }
+
+            curOpUnitView?.RefreshToDefaultPosition();
+            curSelectPlayer = null;
+            curMovementRange = null;
+            previewGrid = null;
+            curAttackTargets = null;
+            curAttackTarget = null;
+            curSelectEnemyIndex = 0;
+            gridMapView.ClearHovered();
+            gridMapView.ClearSelected();
+            battlePath.HidePath();
+            resultView.Hide();
+            actionMenuView.Hide();
+            unitInfoView?.Hide();
+            ChangeState(BattleStatus.Idle);
         }
 
         public bool TryBeginPhaseTransition()
@@ -554,7 +620,7 @@ namespace FE.Presentation
                 ClearAllSelectionStatus(curSelectPlayer);
             }
 
-            ClearEnemySelections();
+            HideEnemyRangeVisuals();
             ChangeState(BattleStatus.PhaseTransition);
             return true;
         }
@@ -567,11 +633,67 @@ namespace FE.Presentation
             }
 
             ChangeState(BattleStatus.Idle);
+
+            if (context.Turns.CurrentPhase == BattlePhase.PlayerPhase)
+            {
+                RestoreTrackedEnemyRanges();
+            }
+
             battleUnitsViewController.RefreshActionStates(context);
+        }
+
+        public void EnterBattleEnded(BattleOutcomeResult outcome)
+        {
+            if (battleStatus == BattleStatus.BattleEnded)
+            {
+                return;
+            }
+
+            if (curSelectPlayer != null)
+            {
+                ClearAllSelectionStatus(curSelectPlayer);
+            }
+            else
+            {
+                gridMapView.ClearSelected();
+                battlePath.HidePath();
+                curMovementRange = null;
+                previewGrid = null;
+                curAttackTargets = null;
+                curAttackTarget = null;
+                resultView.Hide();
+                actionMenuView.Hide();
+            }
+
+            ClearEnemySelections();
+            ClearHoveredUnitRange();
+            unitInfoView?.Hide();
+            ChangeState(BattleStatus.BattleEnded);
+            pointer?.SetGameplayInputEnabled(false);
+            battleUnitsViewController.RefreshActionStates(context);
+            BattleEnded?.Invoke(outcome);
         }
 
         public void OnHoverChanged(GridCoord? grid)
         {
+            if (isExternalInputSuspended ||
+                battleStatus == BattleStatus.PhaseTransition ||
+                battleStatus == BattleStatus.ResolvingCombat ||
+                battleStatus == BattleStatus.BattleEnded)
+            {
+                ClearHoveredUnitRange();
+                battlePath?.HidePath();
+                unitInfoView?.Hide();
+                return;
+            }
+
+            RefreshUnitInfo(grid);
+
+            BattleUnit unitAtGrid = grid.HasValue
+                ? context.Units.GetUnitByGrid(grid.Value)
+                : null;
+            UpdateHoveredUnitRange(unitAtGrid);
+
             if (battleStatus != BattleStatus.UnitSelected ||
                 battlePath == null ||
                 curSelectPlayer == null ||
@@ -591,10 +713,55 @@ namespace FE.Presentation
             battlePath.ShowPath(path);
         }
 
+        public void SetExternalInputSuspended(bool isSuspended)
+        {
+            if (isExternalInputSuspended == isSuspended)
+            {
+                return;
+            }
+
+            isExternalInputSuspended = isSuspended;
+
+            if (isSuspended)
+            {
+                ClearHoveredUnitRange();
+                battlePath?.HidePath();
+                unitInfoView?.Hide();
+            }
+
+            RefreshPointerInputEnabled();
+        }
+
+        private void RefreshUnitInfo(GridCoord? grid)
+        {
+            if (unitInfoView == null)
+            {
+                return;
+            }
+
+            if (!grid.HasValue)
+            {
+                unitInfoView.Hide();
+                return;
+            }
+
+            BattleUnit unit =
+                context.Units.GetUnitByGrid(grid.Value);
+
+            if (unit == null)
+            {
+                unitInfoView.Hide();
+                return;
+            }
+
+            unitInfoView.Show(unit, context.Map);
+        }
+
         private bool CanHandleGridInput()
         {
-            return battleStatus == BattleStatus.Idle ||
-                   battleStatus == BattleStatus.UnitSelected;
+            return !isExternalInputSuspended &&
+                   (battleStatus == BattleStatus.Idle ||
+                    battleStatus == BattleStatus.UnitSelected);
         }
 
         private void ChangeState(BattleStatus next)
@@ -603,21 +770,141 @@ namespace FE.Presentation
 
             if (pointer != null)
             {
-                pointer.SetGameplayInputEnabled(
-                    next == BattleStatus.Idle ||
-                    next == BattleStatus.UnitSelected);
+                RefreshPointerInputEnabled();
             }
         }
 
         private void ClearEnemySelections()
         {
-            foreach (BattleUnit enemy in selectedEnemies)
+            foreach (UnitId enemyId in
+                     enemyRangeSelection.CreateSnapshot())
             {
-                gridMapView.SetOffMovement(enemy.Id);
-                gridMapView.SetOffAttackRange(enemy.Id);
+                gridMapView.SetOffMovement(enemyId);
+                gridMapView.SetOffAttackRange(enemyId);
             }
 
-            selectedEnemies.Clear();
+            enemyRangeSelection.Clear();
+        }
+
+        private void HideEnemyRangeVisuals()
+        {
+            foreach (UnitId enemyId in
+                     enemyRangeSelection.CreateSnapshot())
+            {
+                gridMapView.SetOffMovement(enemyId);
+                gridMapView.SetOffAttackRange(enemyId);
+            }
+
+        }
+
+        private void RestoreTrackedEnemyRanges()
+        {
+            foreach (UnitId enemyId in
+                     enemyRangeSelection.CreateSnapshot())
+            {
+                BattleUnit enemy =
+                    context.Units.GetUnitById(enemyId);
+
+                if (enemy == null || enemy.IsDead)
+                {
+                    enemyRangeSelection.Remove(enemyId);
+                    gridMapView.SetOffMovement(enemyId);
+                    gridMapView.SetOffAttackRange(enemyId);
+                    continue;
+                }
+
+                if (!MovementQuery.TryCalculate(
+                        enemy,
+                        context.Map,
+                        context.Units,
+                        out MovementRange movement))
+                {
+                    enemyRangeSelection.Remove(enemyId);
+                    gridMapView.SetOffMovement(enemyId);
+                    gridMapView.SetOffAttackRange(enemyId);
+                    continue;
+                }
+
+                HashSet<GridCoord> attackRange =
+                    AttackRangeQuery.CalculateCoverage(
+                        enemy,
+                        context.Map,
+                        movement);
+                gridMapView.SetInMovement(movement, enemyId);
+                gridMapView.SetInAttackRange(
+                    attackRange,
+                    enemyId);
+            }
+
+        }
+
+        private void UpdateHoveredUnitRange(BattleUnit unit)
+        {
+            if (ReferenceEquals(hoveredUnit, unit))
+            {
+                return;
+            }
+
+            ClearHoveredUnitRange();
+            hoveredUnit = unit;
+
+            if (hoveredUnit == null ||
+                hoveredUnit.IsDead ||
+                ReferenceEquals(hoveredUnit, curSelectPlayer) ||
+                enemyRangeSelection.IsTracked(hoveredUnit.Id))
+            {
+                hoveredUnit = null;
+                return;
+            }
+
+            if (!MovementQuery.TryCalculate(
+                    hoveredUnit,
+                    context.Map,
+                    context.Units,
+                    out MovementRange movement))
+            {
+                hoveredUnit = null;
+                return;
+            }
+
+            HashSet<GridCoord> attackRange =
+                AttackRangeQuery.CalculateCoverage(
+                    hoveredUnit,
+                    context.Map,
+                    movement);
+            gridMapView.SetInHoverMovement(
+                movement,
+                hoveredUnit.Id);
+            gridMapView.SetInHoverAttackRange(
+                attackRange,
+                hoveredUnit.Id);
+        }
+
+        private void ClearHoveredUnitRange()
+        {
+            if (hoveredUnit == null)
+            {
+                return;
+            }
+
+            UnitId unitId = hoveredUnit.Id;
+            gridMapView.SetOffHoverMovement(unitId);
+            gridMapView.SetOffHoverAttackRange(unitId);
+            hoveredUnit = null;
+        }
+
+        private void RefreshPointerInputEnabled()
+        {
+            if (pointer == null)
+            {
+                return;
+            }
+
+            bool isPlayable =
+                battleStatus == BattleStatus.Idle ||
+                battleStatus == BattleStatus.UnitSelected;
+            pointer.SetGameplayInputEnabled(
+                isPlayable && !isExternalInputSuspended);
         }
 
         public void Dispose()
@@ -626,7 +913,11 @@ namespace FE.Presentation
             {
                 pointer.TileSelected -= OnClickGrid;
                 pointer.HoverGridChanged -= OnHoverChanged;
-                battlePath?.HidePath();
+            }
+
+            if (battlePath != null)
+            {
+                battlePath.HidePath();
             }
 
             if (resultView != null)

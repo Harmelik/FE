@@ -77,6 +77,32 @@ namespace FE.Core
             int matk,
             int magicDef,
             int hit,
+            int avoid)
+            : this(
+                maxHP,
+                patk,
+                phyDef,
+                matk,
+                magicDef,
+                hit,
+                avoid,
+                0,
+                0,
+                0)
+        {
+        }
+
+        /// <summary>
+        /// Compatibility constructor for isolated rule tests and older callers.
+        /// New unit data reads movement from the class and range from the weapon.
+        /// </summary>
+        public UnitStats(
+            int maxHP,
+            int patk,
+            int phyDef,
+            int matk,
+            int magicDef,
+            int hit,
             int avoid,
             int movement,
             int minAttackRange,

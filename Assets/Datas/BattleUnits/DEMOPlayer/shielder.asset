@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: shielder
   m_EditorClassIdentifier: 
   displayName: "\u8FD1\u536B"
+  level: 1
+  unitClass: {fileID: 11400000, guid: 6680afa12bc14090afbaaa1de041ef44, type: 2}
+  equippedWeapon: {fileID: 11400000, guid: 111be2d609654721bb3836caa613314f, type: 2}
   maxHP: 30
   pAtk: 15
   phyDef: 8
@@ -20,6 +23,3 @@ MonoBehaviour:
   magicDef: 3
   hit: 70
   avoid: 0
-  movement: 8
-  minAttackRange: 1
-  maxAttackRange: 1

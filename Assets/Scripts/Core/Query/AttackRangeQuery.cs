@@ -18,8 +18,8 @@ namespace FE.Core
                 return null;
             }
 
-            int minRange = unit.BaseStats.MinAttackRange;
-            int maxRange = unit.BaseStats.MaxAttackRange;
+            int minRange = unit.EquippedWeapon.MinRange;
+            int maxRange = unit.EquippedWeapon.MaxRange;
             var result = new HashSet<GridCoord>();
 
             for (int y = startPosition.y - maxRange;

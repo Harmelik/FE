@@ -1,7 +1,14 @@
 namespace FE.Core
 {
-    public sealed class EndPhaseCommand : IBattleCommand
+    public sealed class EndPhaseCommand :
+        IBattleCommand,
+        IBattleHistoryCommand
     {
+        public BattleCommandHistoryDescriptor GetHistoryDescriptor()
+        {
+            return BattleCommandHistoryDescriptor.PhaseTransition();
+        }
+
         public BattleCommandResult Execute(BattleContext context)
         {
             if (context == null)

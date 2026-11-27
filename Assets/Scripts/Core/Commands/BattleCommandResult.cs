@@ -6,17 +6,20 @@ namespace FE.Core
         public string ErrorMessage { get; }
         public CombatAttackResult? AttackResult { get; }
         public BattlePhaseTransitionResult? PhaseTransition { get; }
+        public BattleOutcomeResult? BattleOutcome { get; }
 
         private BattleCommandResult(
             bool isSuccess,
             string errorMessage,
             CombatAttackResult? attackResult,
-            BattlePhaseTransitionResult? phaseTransition)
+            BattlePhaseTransitionResult? phaseTransition,
+            BattleOutcomeResult? battleOutcome)
         {
             IsSuccess = isSuccess;
             ErrorMessage = errorMessage;
             AttackResult = attackResult;
             PhaseTransition = phaseTransition;
+            BattleOutcome = battleOutcome;
         }
 
         public static BattleCommandResult Success()
@@ -24,6 +27,7 @@ namespace FE.Core
             return new BattleCommandResult(
                 true,
                 string.Empty,
+                null,
                 null,
                 null);
         }
@@ -35,6 +39,7 @@ namespace FE.Core
                 true,
                 string.Empty,
                 attackResult,
+                null,
                 null);
         }
 
@@ -45,7 +50,8 @@ namespace FE.Core
                 true,
                 string.Empty,
                 null,
-                phaseTransition);
+                phaseTransition,
+                null);
         }
 
         public static BattleCommandResult Failure(string errorMessage)
@@ -54,7 +60,19 @@ namespace FE.Core
                 false,
                 errorMessage,
                 null,
+                null,
                 null);
+        }
+
+        public BattleCommandResult WithBattleOutcome(
+            BattleOutcomeResult battleOutcome)
+        {
+            return new BattleCommandResult(
+                IsSuccess,
+                ErrorMessage,
+                AttackResult,
+                PhaseTransition,
+                battleOutcome);
         }
     }
 }

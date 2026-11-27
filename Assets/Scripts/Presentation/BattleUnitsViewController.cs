@@ -14,13 +14,16 @@ namespace FE.Presentation
         [SerializeField] private BattleUnitView unitView;
         private Dictionary<UnitId, BattleUnitView> unitViews;
 
-        public void Init(BattleContext context, GridGeometry gg)
+        public void Init(
+            BattleContext context,
+            GridGeometry gg,
+            GridMapView gridMapView)
         {
             unitViews = new Dictionary<UnitId, BattleUnitView>();
             foreach (var unit in context.Units.AllUnits)
             {
                 var newUnitView = GameObject.Instantiate(unitView, this.transform);
-                newUnitView.Init(unit, gg);
+                newUnitView.Init(unit, gg, gridMapView);
                 newUnitView.name = $"Unit_{unit.Id}_{unit.DisplayName}";
                 unitViews.Add(unit.Id, newUnitView);
             }
@@ -57,6 +60,8 @@ namespace FE.Presentation
                     view.RefreshToDefaultPosition();
                     view.SetGrayed(unit.HasActed);
                 }
+
+                view.RefreshHealth();
             }
         }
 
@@ -77,6 +82,7 @@ namespace FE.Presentation
                 }
 
                 view.SetGrayed(unit.HasActed);
+                view.RefreshHealth();
             }
         }
     }

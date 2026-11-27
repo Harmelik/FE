@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using FE.Battle;
@@ -14,7 +15,10 @@ namespace FE.Presentation
     {
         private BattleUnit battleUnit;
         private GridGeometry gg;
+        private GridMapView gridMapView;
         [SerializeField] private MeshRenderer mesh;
+        [SerializeField] private Transform modelRoot;
+        [SerializeField] private BattleUnitWorldHudView worldHudView;
         [SerializeField] private Material playerMaterial;
         [SerializeField] private Material enemyMaterial;
         [SerializeField] private float offsetY;
@@ -24,12 +28,18 @@ namespace FE.Presentation
         private MaterialPropertyBlock propertyBlock;
         private Color baseMaterialColor;
 
-        public void Init(BattleUnit unit, GridGeometry gg)
+        public void Init(
+            BattleUnit unit,
+            GridGeometry gg,
+            GridMapView gridMapView)
         {
-            if(unit == null || gg == null) return;
+            if(unit == null || gg == null || gridMapView == null) return;
             battleUnit = unit;
             this.gg = gg;
-            defaultScale = transform.localScale;
+            this.gridMapView = gridMapView;
+            modelRoot ??= transform;
+            defaultScale = modelRoot.localScale;
+            worldHudView?.Bind(unit, Camera.main);
 
             switch (battleUnit.Fac)
             {
@@ -45,6 +55,7 @@ namespace FE.Presentation
 
             baseMaterialColor = mesh.sharedMaterial.color;
             transform.position = GetUnitWorldPosition(battleUnit.CurGrid);
+            RefreshHealth();
         }
 
         public void MoveToPreviewPosition(GridCoord grid)
@@ -112,6 +123,49 @@ namespace FE.Presentation
                 onComplete?.Invoke();
             }).Play();
         }
+
+        public IEnumerator MoveToPositionByPathRoutine(
+            IReadOnlyList<GridCoord> path)
+        {
+            previewTween?.Kill();
+            previewTween = null;
+
+            if (path == null || path.Count == 0)
+            {
+                yield break;
+            }
+
+            if (path.Count == 1)
+            {
+                transform.position =
+                    GetUnitWorldPosition(path[0]);
+                yield break;
+            }
+
+            Sequence sequence = DOTween.Sequence();
+            previewTween = sequence;
+
+            for (int i = 1; i < path.Count; i++)
+            {
+                GridCoord destination = path[i];
+                sequence.Append(
+                    DOTween.To(
+                        () => transform.position,
+                        value => transform.position = value,
+                        GetUnitWorldPosition(destination),
+                        0.06f));
+            }
+
+            yield return sequence
+                .Play()
+                .WaitForCompletion();
+
+            if (ReferenceEquals(previewTween, sequence))
+            {
+                previewTween = null;
+            }
+        }
+
         public void RefreshToDefaultPosition()
         {
             previewTween?.Kill();
@@ -121,7 +175,7 @@ namespace FE.Presentation
             combatTween = null;
 
             transform.position = GetUnitWorldPosition(battleUnit.CurGrid);
-            transform.localScale = defaultScale;
+            modelRoot.localScale = defaultScale;
         }
 
 
@@ -178,7 +232,7 @@ namespace FE.Presentation
         public Tween PlayDefeat()
         {
             CancelCombatAnimation();
-            combatTween = transform
+            combatTween = modelRoot
                 .DOScale(0f, 0.25f)
                 .SetEase(Ease.InQuad);
             return combatTween;
@@ -192,8 +246,9 @@ namespace FE.Presentation
 
         private Vector3 GetUnitWorldPosition(GridCoord grid)
         {
-            return gg.GetCellCenter(grid) +
-                   Vector3.up * offsetY;
+            return gridMapView.GetWorldPosition(
+                grid,
+                offsetY);
         }
 
         public void SetGrayed(bool isGrayed)
@@ -211,6 +266,11 @@ namespace FE.Presentation
                     ? Color.Lerp(baseMaterialColor, Color.gray, 0.7f)
                     : baseMaterialColor);
             mesh.SetPropertyBlock(propertyBlock);
+        }
+
+        public void RefreshHealth()
+        {
+            worldHudView?.RefreshHealth();
         }
 
         private void OnDestroy()

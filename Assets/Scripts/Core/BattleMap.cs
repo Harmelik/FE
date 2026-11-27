@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 
 namespace FE.Core
@@ -9,8 +8,7 @@ namespace FE.Core
     /// </summary>
     public class BattleMap
     {
-        //可进入状态
-        private readonly bool[,] _walkable;
+        private readonly TerrainType[,] _terrainTypes;
 
         public int Width { get; }
         public int Height { get; }
@@ -24,13 +22,13 @@ namespace FE.Core
 
             Width = width;
             Height = height;
-            _walkable = new bool[Width, Height];
+            _terrainTypes = new TerrainType[Width, Height];
 
             for (var i = 0; i < Width; i++)
             {
                 for (var j = 0; j < Height; j++)
                 {
-                    _walkable[i, j] = true;
+                    _terrainTypes[i, j] = TerrainType.Plain;
                 }
             }
         }
@@ -47,7 +45,79 @@ namespace FE.Core
 
         public bool IsWalkable(GridCoord grid)
         {
-            return IsInside(grid) && _walkable[grid.x, grid.y];
+            return CanEnter(grid, MovementType.Foot);
+        }
+
+        public bool CanEnter(
+            GridCoord grid,
+            MovementType movementType)
+        {
+            return IsInside(grid) &&
+                   GetTerrain(grid).CanEnter(movementType);
+        }
+
+        public int GetMovementCost(GridCoord grid)
+        {
+            return GetTerrain(grid).MovementCost;
+        }
+
+        public TerrainProfile GetTerrain(GridCoord grid)
+        {
+            return TerrainCatalog.Get(GetTerrainType(grid));
+        }
+
+        public TerrainType GetTerrainType(GridCoord grid)
+        {
+            if (!IsInside(grid))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(grid),
+                    grid,
+                    "Grid coordinate must be inside the map.");
+            }
+
+            return _terrainTypes[grid.x, grid.y];
+        }
+
+        public void SetTerrain(
+            GridCoord grid,
+            TerrainType terrainType)
+        {
+            if (!IsInside(grid))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(grid),
+                    grid,
+                    "Grid coordinate must be inside the map.");
+            }
+
+            _terrainTypes[grid.x, grid.y] = terrainType;
+        }
+
+        internal TerrainType[,] CaptureTerrainTypes()
+        {
+            return (TerrainType[,])_terrainTypes.Clone();
+        }
+
+        internal void RestoreTerrainTypes(
+            TerrainType[,] terrainTypes)
+        {
+            if (terrainTypes == null ||
+                terrainTypes.GetLength(0) != Width ||
+                terrainTypes.GetLength(1) != Height)
+            {
+                throw new ArgumentException(
+                    "Terrain snapshot dimensions do not match the map.",
+                    nameof(terrainTypes));
+            }
+
+            for (int x = 0; x < Width; x++)
+            {
+                for (int y = 0; y < Height; y++)
+                {
+                    _terrainTypes[x, y] = terrainTypes[x, y];
+                }
+            }
         }
     }
 }

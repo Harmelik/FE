@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using FE.Core;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,33 +8,45 @@ namespace FE.Presentation
 {
     public class BattleTurnPresentationController : MonoBehaviour
     {
-        [SerializeField] private TMP_Text turnText;
-        [SerializeField] private TMP_Text phaseText;
         [SerializeField] private Button endTurnButton;
-        [SerializeField, Min(0f)] private float enemyPhaseDuration = 0.8f;
 
         private BattleContext context;
         private BattleCommandProcessor commandProcessor;
         private BattleSelectionController selectionController;
+        private BattleEnemyPhaseController enemyPhaseController;
         private GridPointerController pointer;
         private BattleUnitsViewController unitsViewController;
         private Coroutine enemyPhaseRoutine;
         private bool isTransitioning;
+        private bool isExternalInputSuspended;
 
         public event Action<BattlePhaseTransitionResult> PhaseChanged;
+        public event Action<BattleOutcomeResult> BattleEnded;
+
+        public bool CanOpenBattleMenu =>
+            context != null &&
+            !isExternalInputSuspended &&
+            !isTransitioning &&
+            context.Turns.CurrentPhase == BattlePhase.PlayerPhase &&
+            selectionController != null &&
+            selectionController.CanOpenBattleMenu;
 
         public void Init(
             BattleContext context,
             BattleCommandProcessor commandProcessor,
             BattleSelectionController selectionController,
+            BattleEnemyPhaseController enemyPhaseController,
             GridPointerController pointer,
             BattleUnitsViewController unitsViewController)
         {
             this.context = context;
             this.commandProcessor = commandProcessor;
             this.selectionController = selectionController;
+            this.enemyPhaseController = enemyPhaseController;
             this.pointer = pointer;
             this.unitsViewController = unitsViewController;
+            selectionController.BattleEnded -= OnBattleEnded;
+            selectionController.BattleEnded += OnBattleEnded;
 
             if (endTurnButton != null)
             {
@@ -48,7 +59,9 @@ namespace FE.Presentation
 
         private void Update()
         {
-            if (context == null || isTransitioning)
+            if (context == null ||
+                isTransitioning ||
+                isExternalInputSuspended)
             {
                 return;
             }
@@ -70,6 +83,7 @@ namespace FE.Presentation
             if (context == null ||
                 commandProcessor == null ||
                 selectionController == null ||
+                isExternalInputSuspended ||
                 isTransitioning ||
                 context.Turns.CurrentPhase != BattlePhase.PlayerPhase)
             {
@@ -100,13 +114,22 @@ namespace FE.Presentation
             ApplyTransition(result.PhaseTransition.Value);
 
             enemyPhaseRoutine = StartCoroutine(
-                FinishEnemyPhaseAfterDelay());
+                FinishEnemyPhaseRoutine());
             return true;
         }
 
-        private IEnumerator FinishEnemyPhaseAfterDelay()
+        private IEnumerator FinishEnemyPhaseRoutine()
         {
-            yield return new WaitForSeconds(enemyPhaseDuration);
+            yield return enemyPhaseController.PlayEnemyPhaseRoutine();
+
+            if (enemyPhaseController.BattleOutcome.HasValue)
+            {
+                BattleOutcomeResult outcome =
+                    enemyPhaseController.BattleOutcome.Value;
+                selectionController.EnterBattleEnded(outcome);
+                enemyPhaseRoutine = null;
+                yield break;
+            }
 
             BattleCommandResult result = commandProcessor.Execute(
                 new EndPhaseCommand());
@@ -127,6 +150,18 @@ namespace FE.Presentation
             UpdateView();
         }
 
+        private void OnBattleEnded(BattleOutcomeResult outcome)
+        {
+            enemyPhaseRoutine = null;
+            isTransitioning = false;
+            pointer?.SetGameplayInputEnabled(false);
+            Debug.Log(
+                $"[BattleOutcome] {outcome.OutcomeType}: " +
+                $"{outcome.Reason}");
+            BattleEnded?.Invoke(outcome);
+            UpdateView();
+        }
+
         private void ApplyTransition(
             BattlePhaseTransitionResult transition)
         {
@@ -142,23 +177,11 @@ namespace FE.Presentation
                 return;
             }
 
-            if (turnText != null)
-            {
-                turnText.text = $"Turn {context.Turns.TurnNumber}";
-            }
-
-            if (phaseText != null)
-            {
-                phaseText.text =
-                    context.Turns.CurrentPhase == BattlePhase.PlayerPhase
-                        ? "Player Phase"
-                        : "Enemy Phase";
-            }
-
             if (endTurnButton != null)
             {
                 endTurnButton.interactable =
                     !isTransitioning &&
+                    !isExternalInputSuspended &&
                     context.Turns.CurrentPhase ==
                     BattlePhase.PlayerPhase;
             }
@@ -166,6 +189,10 @@ namespace FE.Presentation
 
         private void OnDestroy()
         {
+            if (selectionController != null)
+            {
+                selectionController.BattleEnded -= OnBattleEnded;
+            }
             if (endTurnButton != null)
             {
                 endTurnButton.onClick.RemoveListener(OnEndTurnClicked);
@@ -178,6 +205,11 @@ namespace FE.Presentation
             }
 
             pointer?.SetGameplayInputEnabled(true);
+        }
+
+        public void SetExternalInputSuspended(bool isSuspended)
+        {
+            isExternalInputSuspended = isSuspended;
         }
     }
 }

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47eb34cfa863add40b9b5413ba1493f9, type: 3}
+  m_Name: mage
+  m_EditorClassIdentifier:
+  displayName: "\u6CD5\u5E08"
+  level: 1
+  unitClass: {fileID: 11400000, guid: 5ef78455bd7f4ef680fabea51cc11e4b, type: 2}
+  equippedWeapon: {fileID: 11400000, guid: 676f7fe060f74695a39504664497412f, type: 2}
+  maxHP: 20
+  pAtk: 4
+  phyDef: 3
+  mAtk: 8
+  magicDef: 5
+  hit: 80
+  avoid: 10

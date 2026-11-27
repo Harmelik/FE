@@ -129,6 +129,36 @@ namespace FE.Core
 
             _allUnitsDictionaryByGrid.Remove(unit.CurGrid);
         }
+
+        internal void RebuildIndexes()
+        {
+            _allUnitsDictionaryById.Clear();
+            _allUnitsDictionaryByGrid.Clear();
+
+            foreach (BattleUnit unit in _allUnitsList)
+            {
+                if (_allUnitsDictionaryById.ContainsKey(unit.Id))
+                {
+                    throw new System.InvalidOperationException(
+                        $"Duplicate restored unit ID: {unit.Id}.");
+                }
+
+                _allUnitsDictionaryById.Add(unit.Id, unit);
+
+                if (unit.IsDead)
+                {
+                    continue;
+                }
+
+                if (_allUnitsDictionaryByGrid.ContainsKey(unit.CurGrid))
+                {
+                    throw new System.InvalidOperationException(
+                        $"Multiple restored units occupy {unit.CurGrid}.");
+                }
+
+                _allUnitsDictionaryByGrid.Add(unit.CurGrid, unit);
+            }
+        }
     }
 }
 

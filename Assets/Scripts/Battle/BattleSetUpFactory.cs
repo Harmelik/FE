@@ -36,9 +36,10 @@ namespace FE.Battle
             UnitId curId = new UnitId(value);
             foreach (var player in config.PlayerDeployments)
             {
-                var status = player.UnitDefinition.CreateStats();
-                BattleUnit unit = new BattleUnit(curId, Faction.Player
-                    , player.UnitDefinition.DisplayName, status,player.ToGridCoord());
+                BattleUnit unit = CreateUnit(
+                    curId,
+                    Faction.Player,
+                    player);
                 var addedUnit = controller.AddUnit(unit, map);
                 if (addedUnit == null)
                 {
@@ -52,9 +53,10 @@ namespace FE.Battle
 
             foreach (var enemy in config.EnemyDeployments)
             {
-                var status = enemy.UnitDefinition.CreateStats();
-                BattleUnit unit = new BattleUnit(curId, Faction.Enemy
-                    , enemy.UnitDefinition.DisplayName, status, enemy.ToGridCoord());
+                BattleUnit unit = CreateUnit(
+                    curId,
+                    Faction.Enemy,
+                    enemy);
                 var addedUnit = controller.AddUnit(unit, map);
                 if (addedUnit == null)
                 {
@@ -73,6 +75,53 @@ namespace FE.Battle
                 controller,
                 new SeededBattleRandom(battleRandomSeed),
                 turns);
+        }
+
+        private static BattleUnit CreateUnit(
+            UnitId id,
+            Faction faction,
+            UnitDeploymentData deployment)
+        {
+            UnitDataDefinition definition = deployment?.UnitDefinition;
+            if (definition == null)
+            {
+                throw new InvalidOperationException(
+                    $"Deployment {id} has no unit definition.");
+            }
+
+            if (definition.UnitClass == null)
+            {
+                throw new InvalidOperationException(
+                    $"Unit {definition.name} has no class assigned.");
+            }
+
+            if (definition.EquippedWeapon == null)
+            {
+                throw new InvalidOperationException(
+                    $"Unit {definition.name} has no equipped weapon assigned.");
+            }
+
+            UnitClassProfile unitClass =
+                definition.UnitClass.CreateProfile();
+            WeaponProfile weapon =
+                definition.EquippedWeapon.CreateProfile();
+
+            if (!unitClass.CanEquip(weapon.Category))
+            {
+                throw new InvalidOperationException(
+                    $"Unit {definition.name} cannot equip " +
+                    $"{weapon.DisplayName} in class {unitClass.DisplayName}.");
+            }
+
+            return new BattleUnit(
+                id,
+                faction,
+                definition.DisplayName,
+                definition.Level,
+                unitClass,
+                weapon,
+                definition.CreateStats(),
+                deployment.ToGridCoord());
         }
     }
 }

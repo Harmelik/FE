@@ -120,7 +120,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   meshRenderer: {fileID: 6178622390829532932}
   normalColor: {r: 0.21960786, g: 0.21960786, b: 0.21960786, a: 1}
+  empowermentArrayColor: {r: 0.72, g: 0.52, b: 0.12, a: 1}
+  forestColor: {r: 0.12, g: 0.32, b: 0.16, a: 1}
+  mountainColor: {r: 0.32, g: 0.27, b: 0.22, a: 1}
+  wallColor: {r: 0.06, g: 0.06, b: 0.07, a: 1}
   hoveredColor: {r: 0.11616409, g: 1, b: 0, a: 1}
   selectedColor: {r: 0.9748428, g: 0.9748428, b: 0.9748428, a: 1}
   movementColor: {r: 0, g: 0.7196212, b: 1, a: 0}
   attackColor: {r: 1, g: 0, b: 0, a: 0}
+  hoveredMovementColor: {r: 0.45, g: 0.9, b: 1, a: 1}
+  hoveredAttackColor: {r: 1, g: 0.45, b: 0.45, a: 1}

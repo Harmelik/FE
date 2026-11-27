@@ -12,6 +12,9 @@ namespace FE.Battle
     public class UnitDataDefinition : ScriptableObject
     {
         [SerializeField] private string displayName;
+        [SerializeField, Min(1)] private int level = 1;
+        [SerializeField] private UnitClassDefinition unitClass;
+        [SerializeField] private WeaponDefinition equippedWeapon;
         [SerializeField, Min(1)] private int maxHP = 25;
         [SerializeField, Min(0)] private int pAtk = 10;
         [SerializeField, Min(0)] private int phyDef = 3;
@@ -19,11 +22,11 @@ namespace FE.Battle
         [SerializeField, Min(0)] private int magicDef = 3;
         [SerializeField, Min(0)] private int hit = 80;
         [SerializeField, Min(0)] private int avoid = 0;
-        [SerializeField, Min(0)] private int movement = 3;
-        [SerializeField, Min(0)] private int minAttackRange = 1;
-        [SerializeField, Min(0)] private int maxAttackRange = 1;
 
         public string DisplayName => displayName;
+        public int Level => level;
+        public UnitClassDefinition UnitClass => unitClass;
+        public WeaponDefinition EquippedWeapon => equippedWeapon;
 
         public UnitStats CreateStats()
         {
@@ -34,19 +37,34 @@ namespace FE.Battle
                 matk:this.mAtk,
                 magicDef:this.magicDef,
                 hit: this.hit,
-                avoid: this.avoid,
-                movement: this.movement,
-                minAttackRange: this.minAttackRange,
-                maxAttackRange: this.maxAttackRange
+                avoid: this.avoid
             );
         }
 
         private void OnValidate()
         {
-            if (maxAttackRange < minAttackRange)
+            if (unitClass == null)
             {
                 Debug.LogWarning(
-                    $"{name}: maxAttackRange cannot be smaller than minAttackRange.",
+                    $"{name}: unitClass is not assigned.",
+                    this);
+            }
+
+            if (equippedWeapon == null)
+            {
+                Debug.LogWarning(
+                    $"{name}: equippedWeapon is not assigned.",
+                    this);
+            }
+
+            if (unitClass != null &&
+                equippedWeapon != null &&
+                (unitClass.EquippableWeaponCategories &
+                 equippedWeapon.Category) != equippedWeapon.Category)
+            {
+                Debug.LogWarning(
+                    $"{name}: {unitClass.DisplayName} cannot equip " +
+                    $"{equippedWeapon.DisplayName}.",
                     this);
             }
         }

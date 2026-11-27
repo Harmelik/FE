@@ -31,5 +31,15 @@ namespace FE.Core
 
             return (int)(value % 100u);
         }
+
+        public BattleRandomState CaptureState()
+        {
+            return new BattleRandomState(state);
+        }
+
+        public void RestoreState(BattleRandomState snapshot)
+        {
+            state = snapshot.Value;
+        }
     }
 }

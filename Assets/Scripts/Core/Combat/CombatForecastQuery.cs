@@ -35,27 +35,47 @@ namespace FE.Core
                 attackPosition,
                 defender.CurGrid);
 
-            if (!attacker.BaseStats.CanAttackAtDistance(distance))
+            WeaponProfile attackerWeapon = attacker.EquippedWeapon;
+            WeaponProfile defenderWeapon = defender.EquippedWeapon;
+
+            if (!attackerWeapon.CanAttackAtDistance(distance))
             {
                 return false;
             }
 
+            TerrainProfile attackerTerrain =
+                context.Map.GetTerrain(attackPosition);
+            TerrainProfile defenderTerrain =
+                context.Map.GetTerrain(defender.CurGrid);
+
             int attackerDamage = CalculateDamage(
-                attacker.BaseStats.PAtk,
-                defender.BaseStats.PhyDef);
+                attacker.GetAttackPower(attackerTerrain),
+                CalculateDefense(
+                    defender,
+                    defenderTerrain,
+                    attackerWeapon.DamageType));
 
             int attackerHitChance = CalculateHitChance(
-                attacker.BaseStats.Hit,
-                defender.BaseStats.Avoid);
+                attacker.BaseStats.Hit + attackerWeapon.Hit,
+                defender.BaseStats.Avoid +
+                defenderTerrain.AvoidBonus);
 
             bool defenderCanAttack =
-                defender.BaseStats.CanAttackAtDistance(distance);
+                defenderWeapon.CanAttackAtDistance(distance);
 
             int defenderDamage = defenderCanAttack ? 
-                CalculateDamage(defender.BaseStats.PAtk, attacker.BaseStats.PhyDef) : 0;
+                CalculateDamage(
+                    defender.GetAttackPower(defenderTerrain),
+                    CalculateDefense(
+                        attacker,
+                        attackerTerrain,
+                        defenderWeapon.DamageType)) : 0;
 
             int defenderHitChance = defenderCanAttack ? 
-                CalculateHitChance(defender.BaseStats.Hit, attacker.BaseStats.Avoid) : 0;
+                CalculateHitChance(
+                    defender.BaseStats.Hit + defenderWeapon.Hit,
+                    attacker.BaseStats.Avoid +
+                    attackerTerrain.AvoidBonus) : 0;
 
             int defenderProjectedHp = Math.Max(0, defender.CurHP - attackerDamage);
 
@@ -104,6 +124,19 @@ namespace FE.Core
             int defense)
         {
             return Math.Max(0, attack - defense);
+        }
+
+        private static int CalculateDefense(
+            BattleUnit unit,
+            TerrainProfile terrain,
+            DamageType damageType)
+        {
+            int baseDefense = damageType == DamageType.Magical
+                ? unit.BaseStats.MagicDef
+                : unit.BaseStats.PhyDef;
+
+            return baseDefense +
+                   terrain.GetDefenseBonus(damageType);
         }
 
         private static int CalculateHitChance(

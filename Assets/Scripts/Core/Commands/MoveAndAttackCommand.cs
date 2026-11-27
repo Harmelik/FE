@@ -1,6 +1,8 @@
 namespace FE.Core
 {
-    public sealed class MoveAndAttackCommand : IBattleCommand
+    public sealed class MoveAndAttackCommand :
+        IBattleCommand,
+        IBattleHistoryCommand
     {
         public UnitId AttackerId { get; }
         public UnitId DefenderId { get; }
@@ -14,6 +16,15 @@ namespace FE.Core
             AttackerId = attackerId;
             DefenderId = defenderId;
             Destination = destination;
+        }
+
+        public BattleCommandHistoryDescriptor GetHistoryDescriptor()
+        {
+            return BattleCommandHistoryDescriptor.UnitAction(
+                BattleHistoryActionType.Attack,
+                AttackerId,
+                DefenderId,
+                Destination);
         }
 
         public BattleCommandResult Execute(BattleContext context)

@@ -14,7 +14,24 @@ namespace FE.Core
         public UnitId Id { get; }
         public Faction Fac { get; }
         public string DisplayName { get; }
+        public int Level { get; }
+        public UnitClassProfile UnitClass { get; }
+        public WeaponProfile EquippedWeapon { get; private set; }
         public UnitStats BaseStats { get; }
+        public int Movement => UnitClass.Movement;
+        public MovementType MovementType => UnitClass.MovementType;
+        public int AttackPower =>
+            (EquippedWeapon.DamageType == DamageType.Magical
+                ? BaseStats.MAtk
+                : BaseStats.PAtk) +
+            EquippedWeapon.Might;
+
+        public int GetAttackPower(TerrainProfile terrain)
+        {
+            return AttackPower +
+                   (terrain?.GetAttackBonus(
+                       EquippedWeapon.DamageType) ?? 0);
+        }
 
         public int CurHP { get; private set; }
         public GridCoord CurGrid { get; private set; }
@@ -22,16 +39,91 @@ namespace FE.Core
         public bool CanAct => !HasActed && CurHP > 0;
         public bool IsDead => CurHP <= 0;
 
-        public BattleUnit(UnitId id, Faction fac, string displayName, UnitStats stats,
+        public BattleUnit(
+            UnitId id,
+            Faction fac,
+            string displayName,
+            int level,
+            UnitClassProfile unitClass,
+            WeaponProfile equippedWeapon,
+            UnitStats stats,
             GridCoord curGrid)
         {
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                throw new ArgumentException(
+                    "Unit display name cannot be empty.",
+                    nameof(displayName));
+            }
+
+            if (level <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(level),
+                    level,
+                    "Unit level must be greater than zero.");
+            }
+
+            if (unitClass == null)
+            {
+                throw new ArgumentNullException(nameof(unitClass));
+            }
+
+            if (equippedWeapon == null)
+            {
+                throw new ArgumentNullException(nameof(equippedWeapon));
+            }
+
+            if (!unitClass.CanEquip(equippedWeapon.Category))
+            {
+                throw new ArgumentException(
+                    $"Class {unitClass.DisplayName} cannot equip " +
+                    $"{equippedWeapon.DisplayName}.");
+            }
+
             Id = id;
             Fac = fac;
             DisplayName = displayName;
+            Level = level;
+            UnitClass = unitClass;
+            EquippedWeapon = equippedWeapon;
             BaseStats = stats;
             CurHP = stats.MaxHP;
             CurGrid = curGrid;
             HasActed = false;
+        }
+
+        /// <summary>
+        /// Compatibility constructor for focused tests that do not exercise
+        /// class or weapon data. Gameplay setup uses the full constructor.
+        /// </summary>
+        public BattleUnit(
+            UnitId id,
+            Faction fac,
+            string displayName,
+            UnitStats stats,
+            GridCoord curGrid)
+            : this(
+                id,
+                fac,
+                displayName,
+                1,
+                new UnitClassProfile(
+                    "TestClass",
+                    WeaponCategory.Sword,
+                    stats.Movement),
+                new WeaponProfile(
+                    "TestWeapon",
+                    WeaponCategory.Sword,
+                    DamageType.Physical,
+                    0,
+                    0,
+                    0,
+                    stats.MinAttackRange,
+                    stats.MaxAttackRange),
+                stats,
+                curGrid)
+        {
         }
 
         public int ApplyDamage(int amount)
@@ -62,6 +154,34 @@ namespace FE.Core
         {
             if(IsDead) return;
             HasActed = false;
+        }
+
+        internal void RestoreState(
+            int curHP,
+            GridCoord curGrid,
+            bool hasActed,
+            WeaponProfile equippedWeapon)
+        {
+            if (curHP < 0 || curHP > BaseStats.MaxHP)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(curHP),
+                    curHP,
+                    "Restored HP must be within the unit's HP range.");
+            }
+
+            if (equippedWeapon == null ||
+                !UnitClass.CanEquip(equippedWeapon.Category))
+            {
+                throw new ArgumentException(
+                    "Restored weapon is not valid for the unit class.",
+                    nameof(equippedWeapon));
+            }
+
+            CurHP = curHP;
+            CurGrid = curGrid;
+            HasActed = hasActed;
+            EquippedWeapon = equippedWeapon;
         }
     }
 }

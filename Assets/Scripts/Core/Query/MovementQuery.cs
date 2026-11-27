@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace FE.Core
 {
@@ -118,13 +119,15 @@ namespace FE.Core
 
             GridCoord origin = unit.CurGrid;
 
-            if (!map.IsInside(origin) || !map.IsWalkable(origin))
+            if (!map.IsInside(origin) ||
+                !map.CanEnter(origin, unit.MovementType))
             {
                 return false;
             }
 
-            int movementLimit = unit.BaseStats.Movement;
-            var pending = new Queue<GridCoord>();
+            int movementLimit = unit.Movement;
+            var frontier =
+                new SortedDictionary<int, Queue<GridCoord>>();
             var costs = new Dictionary<GridCoord, int>();
 
             Dictionary<GridCoord, GridCoord> parents = new();
@@ -132,31 +135,55 @@ namespace FE.Core
             List<GridCoord> destinations = new();
 
             costs.Add(origin, 0);
-            pending.Enqueue(origin);
+            AddToFrontier(frontier, 0, origin);
             destinations.Add(origin);
             destinationLookup.Add(origin);
 
-            while (pending.Count > 0)
+            while (frontier.Count > 0)
             {
-                var curGrid = pending.Dequeue();
-                int curCost = costs[curGrid];
+                KeyValuePair<int, Queue<GridCoord>> current =
+                    frontier.First();
+                int curCost = current.Key;
+                GridCoord curGrid = current.Value.Dequeue();
+
+                if (current.Value.Count == 0)
+                {
+                    frontier.Remove(curCost);
+                }
+
+                if (!costs.TryGetValue(curGrid, out int bestCost) ||
+                    bestCost != curCost)
+                {
+                    continue;
+                }
+
                 if(curCost >= movementLimit) continue;
 
                 foreach (var direction in Directions)
                 {
                     var destGrid = new GridCoord(curGrid.x + direction.x, curGrid.y + direction.y);
-                    if(!map.IsInside(destGrid) || !map.IsWalkable(destGrid)) continue;
+                    if (!map.IsInside(destGrid) ||
+                        !map.CanEnter(destGrid, unit.MovementType))
+                    {
+                        continue;
+                    }
 
                     BattleUnit battleUnit = units.GetUnitByGrid(destGrid);
                     if(battleUnit != null && battleUnit.Fac != unit.Fac) continue;
 
-                    int nextCost = curCost + 1;
+                    int nextCost =
+                        curCost + map.GetMovementCost(destGrid);
+                    if (nextCost > movementLimit)
+                    {
+                        continue;
+                    }
+
                     //有更近的路径就不接着走了
                     if(costs.TryGetValue(destGrid, out int curValue) && curValue <= nextCost) continue;
 
                     costs[destGrid] = nextCost;
                     parents[destGrid] = curGrid;
-                    pending.Enqueue(destGrid);
+                    AddToFrontier(frontier, nextCost, destGrid);
 
                     bool canStop = battleUnit == null || battleUnit == unit;
                     //Hash里没有的才往数组里加
@@ -176,6 +203,20 @@ namespace FE.Core
                 destinationLookup,
                 destinations);
             return true;
+        }
+
+        private static void AddToFrontier(
+            SortedDictionary<int, Queue<GridCoord>> frontier,
+            int cost,
+            GridCoord grid)
+        {
+            if (!frontier.TryGetValue(cost, out Queue<GridCoord> queue))
+            {
+                queue = new Queue<GridCoord>();
+                frontier.Add(cost, queue);
+            }
+
+            queue.Enqueue(grid);
         }
     }
 }

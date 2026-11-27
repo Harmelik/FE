@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: enemyThief01
   m_EditorClassIdentifier: 
   displayName: "\u5C71\u8D3C"
+  level: 1
+  unitClass: {fileID: 11400000, guid: 8224dc229daf4db48f22bd19a569a594, type: 2}
+  equippedWeapon: {fileID: 11400000, guid: c85a1f69e3cc422d8bfba7b5e3167a82, type: 2}
   maxHP: 25
   pAtk: 10
   phyDef: 3
@@ -20,6 +23,3 @@ MonoBehaviour:
   magicDef: 3
   hit: 80
   avoid: 0
-  movement: 3
-  minAttackRange: 1
-  maxAttackRange: 1

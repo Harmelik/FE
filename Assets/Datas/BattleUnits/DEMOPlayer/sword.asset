@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: sword
   m_EditorClassIdentifier: 
   displayName: "\u5251\u5723"
+  level: 1
+  unitClass: {fileID: 11400000, guid: ea9ad7106bf4427a9ad131e9dc4c2855, type: 2}
+  equippedWeapon: {fileID: 11400000, guid: c85a1f69e3cc422d8bfba7b5e3167a82, type: 2}
   maxHP: 25
   pAtk: 13
   phyDef: 5
@@ -20,6 +23,3 @@ MonoBehaviour:
   magicDef: 5
   hit: 90
   avoid: 20
-  movement: 5
-  minAttackRange: 1
-  maxAttackRange: 2

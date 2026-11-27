@@ -8,6 +8,7 @@ namespace FE.Core
 
         public int TurnNumber { get; private set; }
         public BattlePhase CurrentPhase { get; private set; }
+        public BattleOutcomeResult CurrentOutcome { get; private set; }
 
         public BattleTurnController(BattleUnitController units)
         {
@@ -16,6 +17,7 @@ namespace FE.Core
 
             TurnNumber = 1;
             CurrentPhase = BattlePhase.PlayerPhase;
+            CurrentOutcome = default;
             ResetFactionActionState(Faction.Player);
         }
 
@@ -67,6 +69,19 @@ namespace FE.Core
                 TurnNumber);
         }
 
+        internal bool EndBattle(BattleOutcomeResult outcome)
+        {
+            if (!outcome.IsBattleEnded ||
+                CurrentPhase == BattlePhase.BattleEnded)
+            {
+                return false;
+            }
+
+            CurrentPhase = BattlePhase.BattleEnded;
+            CurrentOutcome = outcome;
+            return true;
+        }
+
         private void ResetFactionActionState(Faction faction)
         {
             foreach (BattleUnit unit in units.AllUnits)
@@ -76,6 +91,24 @@ namespace FE.Core
                     unit.ResetActionState();
                 }
             }
+        }
+
+        internal void RestoreState(
+            int turnNumber,
+            BattlePhase currentPhase,
+            BattleOutcomeResult currentOutcome)
+        {
+            if (turnNumber < 1)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(turnNumber),
+                    turnNumber,
+                    "Turn number must be positive.");
+            }
+
+            TurnNumber = turnNumber;
+            CurrentPhase = currentPhase;
+            CurrentOutcome = currentOutcome;
         }
     }
 }

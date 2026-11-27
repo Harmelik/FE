@@ -1,6 +1,8 @@
 namespace FE.Core
 {
-    public sealed class MoveAndWaitCommand : IBattleCommand
+    public sealed class MoveAndWaitCommand :
+        IBattleCommand,
+        IBattleHistoryCommand
     {
         public UnitId UnitId { get; }
         public GridCoord Destination { get; }
@@ -11,6 +13,14 @@ namespace FE.Core
         {
             UnitId = unitId;
             Destination = destination;
+        }
+
+        public BattleCommandHistoryDescriptor GetHistoryDescriptor()
+        {
+            return BattleCommandHistoryDescriptor.UnitAction(
+                BattleHistoryActionType.Wait,
+                UnitId,
+                destination: Destination);
         }
 
         public BattleCommandResult Execute(BattleContext context)

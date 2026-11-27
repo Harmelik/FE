@@ -7,22 +7,30 @@ namespace FE.Presentation
     /// </summary>
     public class GridTileView : MonoBehaviour
     {
-        [SerializeField] private MeshRenderer meshRenderer;
-
-        [SerializeField] private Color normalColor;
+        [SerializeField] private MeshRenderer highlightRenderer;
         [SerializeField] private Color hoveredColor;
         [SerializeField] private Color selectedColor;
         [SerializeField] private Color movementColor;
         [SerializeField] private Color attackColor;
-
+        [SerializeField] private Color hoveredMovementColor =
+            new Color(0.45f, 0.9f, 1f, 1f);
+        [SerializeField] private Color hoveredAttackColor =
+            new Color(1f, 0.45f, 0.45f, 1f);
+        [SerializeField, Min(0f)] private float surfaceHeight;
 
         private bool isHovered;
         private bool isSelected;
         private bool isInMovement;
         private bool isInAttack;
+        private bool isInHoverMovement;
+        private bool isInHoverAttack;
+        private MaterialPropertyBlock propertyBlock;
+
+        public float SurfaceHeight => surfaceHeight;
 
         private void Awake()
         {
+            propertyBlock = new MaterialPropertyBlock();
             RefreshTileColor();
         }
 
@@ -54,28 +62,76 @@ namespace FE.Presentation
             RefreshTileColor();
         }
 
+        public void SetHoverMovement(bool isHoverMovement)
+        {
+            isInHoverMovement = isHoverMovement;
+
+            RefreshTileColor();
+        }
+
+        public void SetHoverAttack(bool isHoverAttack)
+        {
+            isInHoverAttack = isHoverAttack;
+
+            RefreshTileColor();
+        }
+
         private void RefreshTileColor()
         {
+            if (highlightRenderer == null)
+            {
+                return;
+            }
+
+            bool isVisible =
+                isSelected ||
+                isHovered ||
+                isInMovement ||
+                isInAttack ||
+                isInHoverMovement ||
+                isInHoverAttack;
+
+            highlightRenderer.enabled = isVisible;
+            if (!isVisible)
+            {
+                return;
+            }
+
+            Color color;
+
             if (isSelected)
             {
-                meshRenderer.material.color = selectedColor;
+                color = selectedColor;
             } 
             else if (isHovered)
             {
-                meshRenderer.material.color = hoveredColor;
+                color = hoveredColor;
             }
             else if (isInMovement)
             {
-                meshRenderer.material.color = movementColor;
+                color = movementColor;
             } 
             else if (isInAttack)
             {
-                meshRenderer.material.color = attackColor;
+                color = attackColor;
+            }
+            else if (isInHoverMovement)
+            {
+                color = hoveredMovementColor;
+            }
+            else if (isInHoverAttack)
+            {
+                color = hoveredAttackColor;
             }
             else
             {
-                meshRenderer.material.color = normalColor;
+                color = selectedColor;
             }
+
+            propertyBlock ??= new MaterialPropertyBlock();
+            highlightRenderer.GetPropertyBlock(propertyBlock);
+            propertyBlock.SetColor("_Color", color);
+            highlightRenderer.SetPropertyBlock(propertyBlock);
         }
     }
 }
